@@ -1,0 +1,216 @@
+@page "/proyectos"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using AssetManagmentApp.Data
+@using AssetManagmentApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+@inject NavigationManager NavigationManager
+
+<PageTitle>Proyectos</PageTitle>
+
+<h1>Proyectos</h1>
+
+@if (errorMessage is not null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        <button class="btn btn-primary mb-3" @onclick="MostrarFormularioCreacion">+ Nuevo proyecto</button>
+    </Authorized>
+</AuthorizeView>
+
+@if (mostrandoCreacion)
+{
+    <EditForm Model="nuevoProyecto" OnValidSubmit="CrearProyectoAsync" class="card card-body mb-3">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="mb-2">
+            <label class="form-label">Nombre</label>
+            <InputText class="form-control" @bind-Value="nuevoProyecto.Nombre" />
+        </div>
+        <div class="mb-2">
+            <label class="form-label">Dirección</label>
+            <InputText class="form-control" @bind-Value="nuevoProyecto.Direccion" />
+        </div>
+        <div class="mb-2">
+            <label class="form-label">Ingeniero a cargo</label>
+            <InputText class="form-control" @bind-Value="nuevoProyecto.IngenieroACargo" />
+        </div>
+        <div>
+            <button type="submit" class="btn btn-success">Guardar</button>
+            <button type="button" class="btn btn-secondary" @onclick="CancelarCreacion">Cancelar</button>
+        </div>
+    </EditForm>
+}
+
+@if (proyectos is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else
+{
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Dirección</th>
+                <th>Ingeniero a cargo</th>
+                <th>Estado</th>
+                <th>Fecha creación</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var proyecto in proyectos)
+            {
+                <tr>
+                    @if (editandoId == proyecto.Id)
+                    {
+                        <td><InputText class="form-control" @bind-Value="edicion.Nombre" /></td>
+                        <td><InputText class="form-control" @bind-Value="edicion.Direccion" /></td>
+                        <td><InputText class="form-control" @bind-Value="edicion.IngenieroACargo" /></td>
+                        <td>
+                            <select class="form-select" @bind="edicion.Estado">
+                                <option value="@EstadoProyecto.Activo">Activo</option>
+                                <option value="@EstadoProyecto.Cerrado">Cerrado</option>
+                            </select>
+                        </td>
+                        <td>@proyecto.FechaCreacion.ToString("dd/MM/yyyy")</td>
+                        <td>
+                            <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicionAsync(proyecto)">Guardar</button>
+                            <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+                        </td>
+                    }
+                    else
+                    {
+                        <td>@proyecto.Nombre</td>
+                        <td>@proyecto.Direccion</td>
+                        <td>@proyecto.IngenieroACargo</td>
+                        <td>@proyecto.Estado</td>
+                        <td>@proyecto.FechaCreacion.ToString("dd/MM/yyyy")</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => VerDetalle(proyecto)">Ver detalle</button>
+                            <AuthorizeView Roles="Admin">
+                                <Authorized>
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => IniciarEdicion(proyecto)">Editar</button>
+                                </Authorized>
+                            </AuthorizeView>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Proyecto>? proyectos;
+    private bool mostrandoCreacion;
+    private ProyectoFormModel nuevoProyecto = new();
+    private int? editandoId;
+    private ProyectoFormModel edicion = new();
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAsync();
+    }
+
+    private async Task CargarAsync()
+    {
+        proyectos = await Db.Proyectos.AsNoTracking().OrderBy(p => p.Nombre).ToListAsync();
+    }
+
+    private void MostrarFormularioCreacion()
+    {
+        nuevoProyecto = new ProyectoFormModel();
+        errorMessage = null;
+        mostrandoCreacion = true;
+    }
+
+    private void CancelarCreacion()
+    {
+        mostrandoCreacion = false;
+    }
+
+    private async Task CrearProyectoAsync()
+    {
+        errorMessage = null;
+
+        var proyecto = new Proyecto
+        {
+            Nombre = nuevoProyecto.Nombre.Trim(),
+            Direccion = nuevoProyecto.Direccion.Trim(),
+            IngenieroACargo = nuevoProyecto.IngenieroACargo.Trim(),
+            Estado = EstadoProyecto.Activo,
+            FechaCreacion = DateOnly.FromDateTime(DateTime.Now)
+        };
+
+        Db.Proyectos.Add(proyecto);
+        await Db.SaveChangesAsync();
+
+        mostrandoCreacion = false;
+        await CargarAsync();
+    }
+
+    private void IniciarEdicion(Proyecto proyecto)
+    {
+        editandoId = proyecto.Id;
+        edicion = new ProyectoFormModel
+        {
+            Nombre = proyecto.Nombre,
+            Direccion = proyecto.Direccion,
+            IngenieroACargo = proyecto.IngenieroACargo,
+            Estado = proyecto.Estado
+        };
+    }
+
+    private void CancelarEdicion()
+    {
+        editandoId = null;
+    }
+
+    private async Task GuardarEdicionAsync(Proyecto proyectoOriginal)
+    {
+        errorMessage = null;
+        var proyecto = await Db.Proyectos.FirstOrDefaultAsync(p => p.Id == proyectoOriginal.Id);
+        if (proyecto is null)
+        {
+            errorMessage = "El proyecto ya no existe.";
+            editandoId = null;
+            await CargarAsync();
+            return;
+        }
+
+        proyecto.Nombre = edicion.Nombre.Trim();
+        proyecto.Direccion = edicion.Direccion.Trim();
+        proyecto.IngenieroACargo = edicion.IngenieroACargo.Trim();
+        proyecto.Estado = edicion.Estado;
+
+        await Db.SaveChangesAsync();
+        editandoId = null;
+        await CargarAsync();
+    }
+
+    private void VerDetalle(Proyecto proyecto)
+    {
+        NavigationManager.NavigateTo($"/proyectos/{proyecto.Id}");
+    }
+
+    private class ProyectoFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "El nombre es obligatorio")]
+        public string Nombre { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "La dirección es obligatoria")]
+        public string Direccion { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "El ingeniero a cargo es obligatorio")]
+        public string IngenieroACargo { get; set; } = string.Empty;
+
+        public EstadoProyecto Estado { get; set; } = EstadoProyecto.Activo;
+    }
+}

@@ -1,0 +1,249 @@
+@page "/dashboard"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using AssetManagmentApp.Data
+@using AssetManagmentApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+
+<PageTitle>Dashboard</PageTitle>
+
+<h1>Dashboard</h1>
+
+<div class="row g-2 mb-4 align-items-end">
+    <div class="col-auto">
+        <label class="form-label">Proyecto</label>
+        <select class="form-select" @bind="filtroProyectoId">
+            <option value="">Todos</option>
+            @if (proyectos is not null)
+            {
+                @foreach (var proyecto in proyectos)
+                {
+                    <option value="@proyecto.Id">@proyecto.Nombre</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label">Tipo de equipo</label>
+        <select class="form-select" @bind="filtroTipoEquipoId">
+            <option value="">Todos</option>
+            @if (tiposEquipo is not null)
+            {
+                @foreach (var tipo in tiposEquipo)
+                {
+                    <option value="@tipo.Id">@tipo.Nombre</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label">Estado</label>
+        <select class="form-select" @bind="filtroEstado">
+            <option value="">Todos</option>
+            @foreach (var estado in Enum.GetValues<EstadoActivo>())
+            {
+                <option value="@estado">@EtiquetaEstado(estado)</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label">Gastado desde</label>
+        <input type="date" class="form-control" @bind="filtroDesde" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label">Gastado hasta</label>
+        <input type="date" class="form-control" @bind="filtroHasta" />
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary" @onclick="AplicarFiltrosAsync">Filtrar</button>
+        <button class="btn btn-outline-secondary" @onclick="LimpiarFiltrosAsync">Limpiar</button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <h3>Total gastado por proyecto</h3>
+        @if (totalesPorProyecto is null)
+        {
+            <p><em>Cargando...</em></p>
+        }
+        else if (totalesPorProyecto.Count == 0)
+        {
+            <p><em>No hay proformas que coincidan con el filtro.</em></p>
+        }
+        else
+        {
+            <table class="table table-sm table-striped">
+                <thead>
+                    <tr>
+                        <th>Proyecto</th>
+                        <th class="text-end">Total gastado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var fila in totalesPorProyecto)
+                    {
+                        <tr>
+                            <td>@fila.ProyectoNombre</td>
+                            <td class="text-end">₡@fila.Total.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th>Total</th>
+                        <th class="text-end">₡@totalesPorProyecto.Sum(f => f.Total).ToString("N2")</th>
+                    </tr>
+                </tfoot>
+            </table>
+        }
+    </div>
+
+    <div class="col-md-6">
+        <h3>Inventario por estado</h3>
+        @if (inventarioPorEstado is null)
+        {
+            <p><em>Cargando...</em></p>
+        }
+        else if (totalActivosFiltrados == 0)
+        {
+            <p><em>No hay activos que coincidan con el filtro.</em></p>
+        }
+        else
+        {
+            @foreach (var fila in inventarioPorEstado)
+            {
+                var porcentaje = totalActivosFiltrados == 0 ? 0 : (double)fila.Cantidad / totalActivosFiltrados * 100;
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between">
+                        <span>@EtiquetaEstado(fila.Estado)</span>
+                        <span>@fila.Cantidad (@porcentaje.ToString("N1")%)</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar @ClaseColorEstado(fila.Estado)" style="width: @(porcentaje.ToString("N1", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                    </div>
+                </div>
+            }
+            <p class="text-muted mt-2">Total: @totalActivosFiltrados activos</p>
+        }
+    </div>
+</div>
+
+@code {
+    private List<Proyecto>? proyectos;
+    private List<TipoEquipo>? tiposEquipo;
+
+    private string filtroProyectoId = "";
+    private string filtroTipoEquipoId = "";
+    private string filtroEstado = "";
+    private DateTime? filtroDesde;
+    private DateTime? filtroHasta;
+
+    private List<TotalPorProyecto>? totalesPorProyecto;
+    private List<InventarioPorEstado>? inventarioPorEstado;
+    private int totalActivosFiltrados;
+
+    protected override async Task OnInitializedAsync()
+    {
+        proyectos = await Db.Proyectos.AsNoTracking().OrderBy(p => p.Nombre).ToListAsync();
+        tiposEquipo = await Db.TiposEquipo.AsNoTracking().OrderBy(t => t.Nombre).ToListAsync();
+        await CargarDatosAsync();
+    }
+
+    private async Task CargarDatosAsync()
+    {
+        var proformasQuery = Db.Proformas
+            .AsNoTracking()
+            .Include(p => p.Proyecto)
+            .Where(p => p.Estado != EstadoProforma.Anulada);
+
+        if (int.TryParse(filtroProyectoId, out var proyectoId))
+        {
+            proformasQuery = proformasQuery.Where(p => p.ProyectoId == proyectoId);
+        }
+
+        if (filtroDesde is not null)
+        {
+            var desde = DateOnly.FromDateTime(filtroDesde.Value);
+            proformasQuery = proformasQuery.Where(p => p.FechaGeneracion >= desde);
+        }
+
+        if (filtroHasta is not null)
+        {
+            var hasta = DateOnly.FromDateTime(filtroHasta.Value);
+            proformasQuery = proformasQuery.Where(p => p.FechaGeneracion <= hasta);
+        }
+
+var totalesCrudos = await proformasQuery
+            .GroupBy(p => p.Proyecto.Nombre)
+            .Select(g => new { Nombre = g.Key, Total = g.Sum(p => p.Total) })
+            .OrderByDescending(g => g.Total)
+            .ToListAsync();
+
+        totalesPorProyecto = totalesCrudos
+            .Select(g => new TotalPorProyecto(g.Nombre, g.Total))
+            .ToList();
+
+        var activosQuery = Db.Activos.AsNoTracking().AsQueryable();
+
+        if (int.TryParse(filtroTipoEquipoId, out var tipoEquipoId))
+        {
+            activosQuery = activosQuery.Where(a => a.TipoEquipoId == tipoEquipoId);
+        }
+
+        if (Enum.TryParse<EstadoActivo>(filtroEstado, out var estadoFiltro))
+        {
+            activosQuery = activosQuery.Where(a => a.Estado == estadoFiltro);
+        }
+
+        var conteosCrudos = await activosQuery
+            .GroupBy(a => a.Estado)
+            .Select(g => new { Estado = g.Key, Cantidad = g.Count() })
+            .ToListAsync();
+
+        var conteos = conteosCrudos
+            .Select(g => new InventarioPorEstado(g.Estado, g.Cantidad))
+            .ToList();
+
+        totalActivosFiltrados = conteos.Sum(c => c.Cantidad);
+
+        inventarioPorEstado = Enum.GetValues<EstadoActivo>()
+            .Select(estado => conteos.FirstOrDefault(c => c.Estado == estado) ?? new InventarioPorEstado(estado, 0))
+            .Where(c => c.Cantidad > 0 || string.IsNullOrEmpty(filtroEstado))
+            .ToList();
+    }
+
+    private async Task AplicarFiltrosAsync() => await CargarDatosAsync();
+
+    private async Task LimpiarFiltrosAsync()
+    {
+        filtroProyectoId = "";
+        filtroTipoEquipoId = "";
+        filtroEstado = "";
+        filtroDesde = null;
+        filtroHasta = null;
+        await CargarDatosAsync();
+    }
+
+    private static string EtiquetaEstado(EstadoActivo estado) => estado switch
+    {
+        EstadoActivo.Disponible => "Disponible",
+        EstadoActivo.Asignado => "Asignado",
+        EstadoActivo.EnReparacion => "En Reparación",
+        EstadoActivo.Danado => "Dañado",
+        _ => estado.ToString()
+    };
+
+    private static string ClaseColorEstado(EstadoActivo estado) => estado switch
+    {
+        EstadoActivo.Disponible => "bg-success",
+        EstadoActivo.Asignado => "bg-primary",
+        EstadoActivo.EnReparacion => "bg-warning",
+        EstadoActivo.Danado => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private record TotalPorProyecto(string ProyectoNombre, decimal Total);
+    private record InventarioPorEstado(EstadoActivo Estado, int Cantidad);
+}

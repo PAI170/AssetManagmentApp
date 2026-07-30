@@ -1,0 +1,231 @@
+@page "/tipos-equipo"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using AssetManagmentApp.Data
+@using AssetManagmentApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+
+<PageTitle>Tipos de Equipo</PageTitle>
+
+<h1>Tipos de Equipo</h1>
+
+@if (errorMessage is not null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        <button class="btn btn-primary mb-3" @onclick="MostrarFormularioCreacion">+ Nuevo tipo de equipo</button>
+    </Authorized>
+</AuthorizeView>
+
+@if (mostrandoCreacion)
+{
+    <EditForm Model="nuevoTipo" OnValidSubmit="CrearTipoAsync" class="card card-body mb-3">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="mb-2">
+            <label class="form-label">Nombre</label>
+            <InputText class="form-control" @bind-Value="nuevoTipo.Nombre" />
+        </div>
+        <div class="mb-2">
+            <label class="form-label">Precio por día (₡)</label>
+            <InputNumber class="form-control" @bind-Value="nuevoTipo.PrecioPorDia" />
+        </div>
+        <div class="mb-2">
+            <label class="form-label">Descripción (opcional)</label>
+            <InputText class="form-control" @bind-Value="nuevoTipo.Descripcion" />
+        </div>
+        <div>
+            <button type="submit" class="btn btn-success">Guardar</button>
+            <button type="button" class="btn btn-secondary" @onclick="CancelarCreacion">Cancelar</button>
+        </div>
+    </EditForm>
+}
+
+@if (tipos is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else
+{
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Precio por día (₡)</th>
+                <th>Descripción</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var tipo in tipos)
+            {
+                <tr>
+                    @if (editandoId == tipo.Id)
+                    {
+                        <td><InputText class="form-control" @bind-Value="edicion.Nombre" /></td>
+                        <td><InputNumber class="form-control" @bind-Value="edicion.PrecioPorDia" /></td>
+                        <td><InputText class="form-control" @bind-Value="edicion.Descripcion" /></td>
+                        <td>
+                            <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicionAsync(tipo)">Guardar</button>
+                            <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+                        </td>
+                    }
+                    else
+                    {
+                        <td>@tipo.Nombre</td>
+                        <td>@tipo.PrecioPorDia.ToString("N2")</td>
+                        <td>@tipo.Descripcion</td>
+                        <td>
+                            <AuthorizeView Roles="Admin">
+                                <Authorized>
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => IniciarEdicion(tipo)">Editar</button>
+                                </Authorized>
+                            </AuthorizeView>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<TipoEquipo>? tipos;
+    private bool mostrandoCreacion;
+    private TipoEquipoFormModel nuevoTipo = new();
+    private int? editandoId;
+    private TipoEquipoFormModel edicion = new();
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAsync();
+    }
+
+    private async Task CargarAsync()
+    {
+        tipos = await Db.TiposEquipo.AsNoTracking().OrderBy(t => t.Nombre).ToListAsync();
+    }
+
+    private void MostrarFormularioCreacion()
+    {
+        nuevoTipo = new TipoEquipoFormModel();
+        mostrandoCreacion = true;
+    }
+
+    private void CancelarCreacion()
+    {
+        mostrandoCreacion = false;
+    }
+
+    private async Task CrearTipoAsync()
+    {
+        errorMessage = null;
+        var hoy = DateOnly.FromDateTime(DateTime.Now);
+
+        var tipo = new TipoEquipo
+        {
+            Nombre = nuevoTipo.Nombre.Trim(),
+            PrecioPorDia = nuevoTipo.PrecioPorDia,
+            Descripcion = string.IsNullOrWhiteSpace(nuevoTipo.Descripcion) ? null : nuevoTipo.Descripcion.Trim()
+        };
+
+        tipo.HistorialPrecios.Add(new HistorialPrecioTipoEquipo
+        {
+            Precio = tipo.PrecioPorDia,
+            VigenteDesde = hoy,
+            VigenteHasta = null
+        });
+
+        Db.TiposEquipo.Add(tipo);
+        await Db.SaveChangesAsync();
+
+        mostrandoCreacion = false;
+        await CargarAsync();
+    }
+
+    private void IniciarEdicion(TipoEquipo tipo)
+    {
+        editandoId = tipo.Id;
+        edicion = new TipoEquipoFormModel
+        {
+            Nombre = tipo.Nombre,
+            PrecioPorDia = tipo.PrecioPorDia,
+            Descripcion = tipo.Descripcion
+        };
+    }
+
+    private void CancelarEdicion()
+    {
+        editandoId = null;
+    }
+
+    private async Task GuardarEdicionAsync(TipoEquipo tipoOriginal)
+    {
+        errorMessage = null;
+        var tipo = await Db.TiposEquipo.FirstOrDefaultAsync(t => t.Id == tipoOriginal.Id);
+        if (tipo is null)
+        {
+            errorMessage = "El tipo de equipo ya no existe.";
+            editandoId = null;
+            await CargarAsync();
+            return;
+        }
+
+        tipo.Nombre = edicion.Nombre.Trim();
+        tipo.Descripcion = string.IsNullOrWhiteSpace(edicion.Descripcion) ? null : edicion.Descripcion.Trim();
+
+        if (edicion.PrecioPorDia != tipo.PrecioPorDia)
+        {
+            var hoy = DateOnly.FromDateTime(DateTime.Now);
+
+            var precioVigente = await Db.HistorialPreciosTipoEquipo
+                .Where(h => h.TipoEquipoId == tipo.Id && h.VigenteHasta == null)
+                .OrderByDescending(h => h.VigenteDesde)
+                .FirstOrDefaultAsync();
+
+            if (precioVigente is not null && precioVigente.VigenteDesde == hoy)
+            {
+                // Se creó/cambió hoy mismo: no hay un día real bajo el precio anterior,
+                // así que se corrige en el mismo registro en vez de abrir un tramo invertido.
+                precioVigente.Precio = edicion.PrecioPorDia;
+            }
+            else
+            {
+                if (precioVigente is not null)
+                {
+                    precioVigente.VigenteHasta = hoy.AddDays(-1);
+                }
+
+                Db.HistorialPreciosTipoEquipo.Add(new HistorialPrecioTipoEquipo
+                {
+                    TipoEquipoId = tipo.Id,
+                    Precio = edicion.PrecioPorDia,
+                    VigenteDesde = hoy,
+                    VigenteHasta = null
+                });
+            }
+
+            tipo.PrecioPorDia = edicion.PrecioPorDia;
+        }
+
+        await Db.SaveChangesAsync();
+        editandoId = null;
+        await CargarAsync();
+    }
+
+    private class TipoEquipoFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "El nombre es obligatorio")]
+        public string Nombre { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Range(0.01, double.MaxValue, ErrorMessage = "El precio debe ser mayor a 0")]
+        public decimal PrecioPorDia { get; set; }
+
+        public string? Descripcion { get; set; }
+    }
+}

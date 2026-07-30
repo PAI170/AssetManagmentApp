@@ -1,0 +1,52 @@
+services:
+  db:
+    image: mariadb:11.4
+    container_name: assetmanagementapp-db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:-assetmanagementapp}
+      MARIADB_USER: ${DB_USER:-assetmanagementapp}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - assetmanagementapp-db-data:/var/lib/mysql
+    networks:
+      - assetmanagementapp-net
+
+  app:
+    build:
+      context: ./src/AssetManagmentApp
+      dockerfile: Dockerfile
+    container_name: assetmanagementapp-web
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Server=db;Port=3306;Database=${DB_NAME:-assetmanagementapp};User=${DB_USER:-assetmanagementapp};Password=${DB_PASSWORD};"
+      SeedAdmin__Email: ${SEED_ADMIN_EMAIL:-admin@rodcast.local}
+      SeedAdmin__Password: ${SEED_ADMIN_PASSWORD}
+    ports:
+      - "127.0.0.1:${APP_PORT:-8081}:8080"
+    networks:
+      - assetmanagementapp-net
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: assetmanagementapp-tunnel
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - app
+    networks:
+      - assetmanagementapp-net
+
+networks:
+  assetmanagementapp-net:
+    name: assetmanagementapp-net
+
+volumes:
+  assetmanagementapp-db-data:
+    name: assetmanagementapp-db-data

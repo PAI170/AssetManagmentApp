@@ -1,0 +1,15 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "AssetManagmentApp",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--no-launch-profile", "--urls", "http://127.0.0.1:5299"],
+      "port": 5299,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "cwd": "src/AssetManagmentApp"
+    }
+  ]
+}

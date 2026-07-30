@@ -1,0 +1,331 @@
+@page "/proyectos/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using AssetManagmentApp.Data
+@using AssetManagmentApp.Models
+@using AssetManagmentApp.Services
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+@inject ProformaService ProformaService
+@inject UserManager<ApplicationUser> UserManager
+
+<PageTitle>@(proyecto?.Nombre ?? "Proyecto")</PageTitle>
+
+@if (proyecto is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else
+{
+    <h1>@proyecto.Nombre</h1>
+    <p class="text-muted mb-1">@proyecto.Direccion</p>
+    <p class="mb-3">
+        Ingeniero a cargo: <strong>@proyecto.IngenieroACargo</strong> ·
+        Estado: <strong>@proyecto.Estado</strong> ·
+        Creado: @proyecto.FechaCreacion.ToString("dd/MM/yyyy")
+    </p>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Total gastado a la fecha</h5>
+            <p class="fs-3 mb-0">₡@totalGastado.ToString("N2")</p>
+        </div>
+    </div>
+
+    <h3>Equipo actualmente asignado</h3>
+    @if (activosAsignados is null || activosAsignados.Count == 0)
+    {
+        <p><em>No hay equipo asignado a este proyecto.</em></p>
+    }
+    else
+    {
+        <table class="table table-sm table-striped mb-4">
+            <thead>
+                <tr>
+                    <th>Placa</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var activo in activosAsignados)
+                {
+                    <tr>
+                        <td>@activo.Placa</td>
+                        <td>@activo.TipoEquipo.Nombre</td>
+                        <td>@activo.Estado</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <h3>Historial de movimientos</h3>
+    @if (movimientos is null || movimientos.Count == 0)
+    {
+        <p><em>Sin movimientos registrados.</em></p>
+    }
+    else
+    {
+        <table class="table table-sm table-striped mb-4">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Activo</th>
+                    <th>Tipo</th>
+                    <th>Estado anterior</th>
+                    <th>Estado nuevo</th>
+                    <th>Usuario</th>
+                    <th>Observación</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var mov in movimientos)
+                {
+                    <tr>
+                        <td>@mov.FechaMovimiento.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@mov.Activo.Placa</td>
+                        <td>@mov.TipoMovimiento</td>
+                        <td>@mov.EstadoAnterior</td>
+                        <td>@mov.EstadoNuevo</td>
+                        <td>@mov.Usuario.Nombre</td>
+                        <td>@mov.Observacion</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <h3>Historial de proformas</h3>
+
+    <AuthorizeView Roles="Admin">
+        <Authorized>
+            <button class="btn btn-primary mb-3" @onclick="MostrarGenerar">Generar Proforma</button>
+        </Authorized>
+    </AuthorizeView>
+
+    @if (generarError is not null)
+    {
+        <div class="alert alert-danger">@generarError</div>
+    }
+
+    @if (mostrandoGenerar)
+    {
+        <div class="card card-body mb-3">
+            <div class="row g-2 align-items-end mb-2">
+                <div class="col-auto">
+                    <label class="form-label">Fecha de corte</label>
+                    <input type="date" class="form-control" @bind="fechaCorte" />
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-outline-primary" @onclick="GenerarVistaPreviaAsync">Vista previa</button>
+                    <button class="btn btn-outline-secondary" @onclick="CancelarGenerar">Cancelar</button>
+                </div>
+            </div>
+
+            @if (vistaPrevia is not null)
+            {
+                @if (vistaPrevia.Count == 0)
+                {
+                    <p><em>No hay días pendientes de facturar para este proyecto hasta esa fecha.</em></p>
+                }
+                else
+                {
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Placa</th>
+                                <th>Tipo</th>
+                                <th>Desde</th>
+                                <th>Hasta</th>
+                                <th>Días</th>
+                                <th>Precio/día</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var linea in vistaPrevia)
+                            {
+                                <tr>
+                                    <td>@linea.Placa</td>
+                                    <td>@linea.TipoEquipoNombre</td>
+                                    <td>@linea.PeriodoDesde.ToString("dd/MM/yyyy")</td>
+                                    <td>@linea.PeriodoHastaExclusive.AddDays(-1).ToString("dd/MM/yyyy")</td>
+                                    <td>@linea.DiasCobrados</td>
+                                    <td>₡@linea.PrecioPorDiaUsado.ToString("N2")</td>
+                                    <td>₡@linea.Subtotal.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="6" class="text-end">Total</th>
+                                <th>₡@vistaPrevia.Sum(l => l.Subtotal).ToString("N2")</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <button class="btn btn-success" @onclick="ConfirmarGenerarAsync">Confirmar y generar proforma</button>
+                }
+            }
+        </div>
+    }
+
+    @if (proformas is null || proformas.Count == 0)
+    {
+        <p><em>Sin proformas generadas.</em></p>
+    }
+    else
+    {
+        <table class="table table-sm table-striped">
+            <thead>
+                <tr>
+                    <th>Número</th>
+                    <th>Fecha</th>
+                    <th>Período</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                    <th>Enviada por correo</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var proforma in proformas)
+                {
+                    <tr>
+                        <td>@proforma.Numero</td>
+                        <td>@proforma.FechaGeneracion.ToString("dd/MM/yyyy")</td>
+                        <td>@proforma.PeriodoDesde.ToString("dd/MM/yyyy") - @proforma.PeriodoHasta.ToString("dd/MM/yyyy")</td>
+                        <td>₡@proforma.Total.ToString("N2")</td>
+                        <td>@proforma.Estado</td>
+                        <td>@(proforma.EnviadaPorCorreo ? "Sí" : "No")</td>
+                        <td>
+                            <a class="btn btn-sm btn-outline-secondary" href="@($"/proformas/{proforma.Id}/pdf")" target="_blank">Descargar PDF</a>
+                            @if (proforma.Estado == EstadoProforma.Generada)
+                            {
+                                <AuthorizeView Roles="Admin">
+                                    <Authorized>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => AnularAsync(proforma)">Anular</button>
+                                    </Authorized>
+                                </AuthorizeView>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Proyecto? proyecto;
+    private List<Activo>? activosAsignados;
+    private List<Movimiento>? movimientos;
+    private List<Proforma>? proformas;
+    private decimal totalGastado;
+
+    private bool mostrandoGenerar;
+    private DateOnly fechaCorte;
+    private List<ProformaLineaPreview>? vistaPrevia;
+    private string? generarError;
+
+    [CascadingParameter]
+    private Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAsync();
+    }
+
+    private async Task CargarAsync()
+    {
+        proyecto = await Db.Proyectos.AsNoTracking().FirstOrDefaultAsync(p => p.Id == Id);
+        if (proyecto is null)
+        {
+            return;
+        }
+
+        activosAsignados = await Db.Activos
+            .AsNoTracking()
+            .Include(a => a.TipoEquipo)
+            .Where(a => a.ProyectoActualId == Id)
+            .OrderBy(a => a.Placa)
+            .ToListAsync();
+
+        movimientos = await Db.Movimientos
+            .AsNoTracking()
+            .Include(m => m.Activo)
+            .Include(m => m.Usuario)
+            .Where(m => m.ProyectoId == Id)
+            .OrderByDescending(m => m.FechaMovimiento)
+            .ToListAsync();
+
+        proformas = await Db.Proformas
+            .AsNoTracking()
+            .Where(p => p.ProyectoId == Id)
+            .OrderByDescending(p => p.FechaGeneracion)
+            .ToListAsync();
+
+        totalGastado = await Db.Proformas
+            .AsNoTracking()
+            .Where(p => p.ProyectoId == Id && p.Estado != EstadoProforma.Anulada)
+            .SumAsync(p => (decimal?)p.Total) ?? 0m;
+    }
+
+    private void MostrarGenerar()
+    {
+        var hoy = DateOnly.FromDateTime(DateTime.Now);
+        var corte24 = new DateOnly(hoy.Year, hoy.Month, 24);
+        fechaCorte = hoy.Day <= 24 ? corte24 : corte24.AddMonths(1);
+        vistaPrevia = null;
+        generarError = null;
+        mostrandoGenerar = true;
+    }
+
+    private void CancelarGenerar()
+    {
+        mostrandoGenerar = false;
+        vistaPrevia = null;
+        generarError = null;
+    }
+
+    private async Task GenerarVistaPreviaAsync()
+    {
+        generarError = null;
+        vistaPrevia = await ProformaService.CalcularDetalleAsync(Id, fechaCorte);
+    }
+
+    private async Task ConfirmarGenerarAsync()
+    {
+        generarError = null;
+
+        var authState = await AuthStateTask!;
+        var email = authState.User.Identity?.Name
+            ?? throw new InvalidOperationException("No hay usuario autenticado.");
+        var usuario = await UserManager.FindByEmailAsync(email)
+            ?? throw new InvalidOperationException("Usuario autenticado no encontrado.");
+
+        try
+        {
+            await ProformaService.GenerarAsync(Id, fechaCorte, usuario.Id);
+        }
+        catch (InvalidOperationException ex)
+        {
+            generarError = ex.Message;
+            return;
+        }
+
+        mostrandoGenerar = false;
+        vistaPrevia = null;
+        await CargarAsync();
+    }
+
+    private async Task AnularAsync(Proforma proforma)
+    {
+        await ProformaService.AnularAsync(proforma.Id);
+        await CargarAsync();
+    }
+}

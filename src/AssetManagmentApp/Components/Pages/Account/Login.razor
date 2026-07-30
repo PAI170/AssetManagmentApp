@@ -1,0 +1,62 @@
+@page "/login"
+@using System.ComponentModel.DataAnnotations
+@using AssetManagmentApp.Models
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager NavigationManager
+
+<PageTitle>Iniciar sesión</PageTitle>
+
+<h1>Iniciar sesión</h1>
+
+@if (errorMessage is not null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+<EditForm Model="Input" method="post" OnValidSubmit="LoginUserAsync" FormName="login" class="card card-body" style="max-width: 400px;">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div class="mb-2">
+        <label class="form-label">Correo</label>
+        <InputText class="form-control" @bind-Value="Input.Email" />
+    </div>
+    <div class="mb-2">
+        <label class="form-label">Contraseña</label>
+        <InputText type="password" class="form-control" @bind-Value="Input.Password" />
+    </div>
+    <button type="submit" class="btn btn-primary">Entrar</button>
+</EditForm>
+
+@code {
+    private string? errorMessage;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    private async Task LoginUserAsync()
+    {
+        var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, isPersistent: true, lockoutOnFailure: false);
+        if (result.Succeeded)
+        {
+            NavigationManager.NavigateTo(ReturnUrl ?? "/inventario", forceLoad: true);
+        }
+        else
+        {
+            errorMessage = "Correo o contraseña incorrectos.";
+        }
+    }
+
+    private class InputModel
+    {
+        [Required(ErrorMessage = "El correo es obligatorio")]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "La contraseña es obligatoria")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

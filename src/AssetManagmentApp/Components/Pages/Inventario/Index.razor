@@ -1,0 +1,497 @@
+@page "/inventario"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using AssetManagmentApp.Data
+@using AssetManagmentApp.Models
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+
+<PageTitle>Inventario</PageTitle>
+
+<h1>Inventario</h1>
+
+@if (errorMessage is not null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+<div class="row g-2 mb-3 align-items-end">
+    <div class="col-auto">
+        <label class="form-label">Estado</label>
+        <select class="form-select" @bind="filtroEstado">
+            <option value="">Todos</option>
+            @foreach (var estado in Enum.GetValues<EstadoActivo>())
+            {
+                <option value="@estado">@EtiquetaEstado(estado)</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label">Tipo de equipo</label>
+        <select class="form-select" @bind="filtroTipoEquipoId">
+            <option value="">Todos</option>
+            @if (tiposEquipo is not null)
+            {
+                @foreach (var tipo in tiposEquipo)
+                {
+                    <option value="@tipo.Id">@tipo.Nombre</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label">Proyecto actual</label>
+        <select class="form-select" @bind="filtroProyectoId">
+            <option value="">Todos</option>
+            <option value="0">Bodega (sin proyecto)</option>
+            @if (proyectos is not null)
+            {
+                @foreach (var proyecto in proyectos)
+                {
+                    <option value="@proyecto.Id">@proyecto.Nombre</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary" @onclick="AplicarFiltrosAsync">Filtrar</button>
+        <button class="btn btn-outline-secondary" @onclick="LimpiarFiltrosAsync">Limpiar</button>
+    </div>
+</div>
+
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        <button class="btn btn-success mb-3" @onclick="MostrarFormularioCreacion">+ Nuevo activo</button>
+    </Authorized>
+</AuthorizeView>
+
+@if (mostrandoCreacion)
+{
+    <EditForm Model="nuevoActivo" OnValidSubmit="CrearActivoAsync" class="card card-body mb-3">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="mb-2">
+            <label class="form-label">Placa</label>
+            <InputText class="form-control" @bind-Value="nuevoActivo.Placa" />
+        </div>
+        <div class="mb-2">
+            <label class="form-label">Tipo de equipo</label>
+            <InputSelect class="form-select" @bind-Value="nuevoActivo.TipoEquipoId">
+                <option value="0">-- Seleccionar --</option>
+                @if (tiposEquipo is not null)
+                {
+                    @foreach (var tipo in tiposEquipo)
+                    {
+                        <option value="@tipo.Id">@tipo.Nombre</option>
+                    }
+                }
+            </InputSelect>
+        </div>
+        <div>
+            <button type="submit" class="btn btn-success">Guardar</button>
+            <button type="button" class="btn btn-secondary" @onclick="CancelarCreacion">Cancelar</button>
+        </div>
+    </EditForm>
+}
+
+@if (activos is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else if (activos.Count == 0)
+{
+    <p><em>No hay activos que coincidan con el filtro.</em></p>
+}
+else
+{
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Placa</th>
+                <th>Tipo</th>
+                <th>Estado</th>
+                <th>Proyecto actual</th>
+                <th>Fecha registro</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var activo in activos)
+            {
+                <tr>
+                    <td>@activo.Placa</td>
+                    <td>@activo.TipoEquipo.Nombre</td>
+                    <td>@EtiquetaEstado(activo.Estado)</td>
+                    <td>@(activo.ProyectoActual?.Nombre ?? "Bodega")</td>
+                    <td>@activo.FechaRegistro.ToString("dd/MM/yyyy")</td>
+                    <td>
+                        <AuthorizeView Roles="Admin">
+                            <Authorized>
+                                @if (filaAccionId == activo.Id && filaAccionTipo == "asignar")
+                                {
+                                    <div class="d-flex gap-1 align-items-center">
+                                        <select class="form-select form-select-sm" @bind="accionProyectoId">
+                                            <option value="0">-- Proyecto --</option>
+                                            @if (proyectos is not null)
+                                            {
+                                                @foreach (var proyecto in proyectos)
+                                                {
+                                                    <option value="@proyecto.Id">@proyecto.Nombre</option>
+                                                }
+                                            }
+                                        </select>
+                                        <button class="btn btn-sm btn-success" @onclick="() => ConfirmarAsignarAsync(activo)">Confirmar</button>
+                                        <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
+                                    </div>
+                                }
+                                else if (filaAccionId == activo.Id && filaAccionTipo == "estado")
+                                {
+                                    <div class="d-flex gap-1 align-items-center">
+                                        <select class="form-select form-select-sm" @bind="accionNuevoEstado">
+                                            @foreach (var estado in Enum.GetValues<EstadoActivo>())
+                                            {
+                                                <option value="@estado">@EtiquetaEstado(estado)</option>
+                                            }
+                                        </select>
+                                        <input class="form-control form-control-sm" placeholder="Observación" @bind="accionObservacion" />
+                                        <button class="btn btn-sm btn-success" @onclick="() => ConfirmarCambiarEstadoAsync(activo)">Confirmar</button>
+                                        <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="d-flex gap-1">
+                                        @if (activo.Estado == EstadoActivo.Disponible)
+                                        {
+                                            <button class="btn btn-sm btn-outline-primary" @onclick="() => AbrirAsignar(activo)">Asignar</button>
+                                        }
+                                        @if (activo.ProyectoActualId is not null)
+                                        {
+                                            <button class="btn btn-sm btn-outline-warning" @onclick="() => ConfirmarRetornarAsync(activo)">Retornar a bodega</button>
+                                        }
+                                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => AbrirCambiarEstado(activo)">Cambiar estado</button>
+                                    </div>
+                                }
+                            </Authorized>
+                        </AuthorizeView>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Activo>? activos;
+    private List<TipoEquipo>? tiposEquipo;
+    private List<Proyecto>? proyectos;
+
+    private string filtroEstado = "";
+    private string filtroTipoEquipoId = "";
+    private string filtroProyectoId = "";
+
+    private bool mostrandoCreacion;
+    private ActivoFormModel nuevoActivo = new();
+    private string? errorMessage;
+
+    private int? filaAccionId;
+    private string filaAccionTipo = "";
+    private int accionProyectoId;
+    private EstadoActivo accionNuevoEstado;
+    private string accionObservacion = "";
+
+    [CascadingParameter]
+    private Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        tiposEquipo = await Db.TiposEquipo.AsNoTracking().OrderBy(t => t.Nombre).ToListAsync();
+        proyectos = await Db.Proyectos.AsNoTracking().OrderBy(p => p.Nombre).ToListAsync();
+        await CargarActivosAsync();
+    }
+
+    private async Task CargarActivosAsync()
+    {
+        var query = Db.Activos
+            .AsNoTracking()
+            .Include(a => a.TipoEquipo)
+            .Include(a => a.ProyectoActual)
+            .AsQueryable();
+
+        if (Enum.TryParse<EstadoActivo>(filtroEstado, out var estado))
+        {
+            query = query.Where(a => a.Estado == estado);
+        }
+
+        if (int.TryParse(filtroTipoEquipoId, out var tipoEquipoId) && tipoEquipoId > 0)
+        {
+            query = query.Where(a => a.TipoEquipoId == tipoEquipoId);
+        }
+
+        if (int.TryParse(filtroProyectoId, out var proyectoId))
+        {
+            query = proyectoId == 0
+                ? query.Where(a => a.ProyectoActualId == null)
+                : query.Where(a => a.ProyectoActualId == proyectoId);
+        }
+
+        activos = await query.OrderBy(a => a.Placa).ToListAsync();
+    }
+
+    private async Task AplicarFiltrosAsync() => await CargarActivosAsync();
+
+    private async Task LimpiarFiltrosAsync()
+    {
+        filtroEstado = "";
+        filtroTipoEquipoId = "";
+        filtroProyectoId = "";
+        await CargarActivosAsync();
+    }
+
+    private void MostrarFormularioCreacion()
+    {
+        nuevoActivo = new ActivoFormModel();
+        errorMessage = null;
+        mostrandoCreacion = true;
+    }
+
+    private void CancelarCreacion()
+    {
+        mostrandoCreacion = false;
+    }
+
+    private async Task CrearActivoAsync()
+    {
+        errorMessage = null;
+        var placa = nuevoActivo.Placa.Trim();
+
+        if (nuevoActivo.TipoEquipoId <= 0)
+        {
+            errorMessage = "Seleccioná un tipo de equipo.";
+            return;
+        }
+
+        var yaExiste = await Db.Activos.AnyAsync(a => a.Placa == placa);
+        if (yaExiste)
+        {
+            errorMessage = $"Ya existe un activo con la placa '{placa}'.";
+            return;
+        }
+
+        var activo = new Activo
+        {
+            Placa = placa,
+            TipoEquipoId = nuevoActivo.TipoEquipoId,
+            Estado = EstadoActivo.Disponible,
+            ProyectoActualId = null,
+            FechaRegistro = DateOnly.FromDateTime(DateTime.Now)
+        };
+
+        Db.Activos.Add(activo);
+
+        try
+        {
+            await Db.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            errorMessage = $"Ya existe un activo con la placa '{placa}'.";
+            return;
+        }
+
+        mostrandoCreacion = false;
+        await CargarActivosAsync();
+    }
+
+    private void AbrirAsignar(Activo activo)
+    {
+        filaAccionId = activo.Id;
+        filaAccionTipo = "asignar";
+        accionProyectoId = 0;
+        errorMessage = null;
+    }
+
+    private void AbrirCambiarEstado(Activo activo)
+    {
+        filaAccionId = activo.Id;
+        filaAccionTipo = "estado";
+        accionNuevoEstado = activo.Estado;
+        accionObservacion = "";
+        errorMessage = null;
+    }
+
+    private void CancelarAccion()
+    {
+        filaAccionId = null;
+        filaAccionTipo = "";
+        errorMessage = null;
+    }
+
+    private async Task<int> ObtenerUsuarioActualIdAsync()
+    {
+        var authState = await AuthStateTask!;
+        var email = authState.User.Identity?.Name
+            ?? throw new InvalidOperationException("No hay usuario autenticado.");
+        var user = await UserManager.FindByEmailAsync(email)
+            ?? throw new InvalidOperationException("Usuario autenticado no encontrado.");
+        return user.Id;
+    }
+
+    private async Task ConfirmarAsignarAsync(Activo activoOriginal)
+    {
+        errorMessage = null;
+
+        if (accionProyectoId <= 0)
+        {
+            errorMessage = "Seleccioná un proyecto.";
+            return;
+        }
+
+        var activo = await Db.Activos.FirstOrDefaultAsync(a => a.Id == activoOriginal.Id);
+        if (activo is null || activo.Estado != EstadoActivo.Disponible)
+        {
+            errorMessage = "El activo ya no está disponible para asignar.";
+            filaAccionId = null;
+            await CargarActivosAsync();
+            return;
+        }
+
+        var usuarioId = await ObtenerUsuarioActualIdAsync();
+        var hoy = DateOnly.FromDateTime(DateTime.Now);
+
+        Db.Movimientos.Add(new Movimiento
+        {
+            ActivoId = activo.Id,
+            ProyectoId = accionProyectoId,
+            TipoMovimiento = TipoMovimiento.Asignacion,
+            EstadoAnterior = EstadoActivo.Disponible,
+            EstadoNuevo = EstadoActivo.Asignado,
+            FechaMovimiento = DateTime.Now,
+            UsuarioId = usuarioId
+        });
+
+        Db.AsignacionesActivoProyecto.Add(new AsignacionActivoProyecto
+        {
+            ActivoId = activo.Id,
+            ProyectoId = accionProyectoId,
+            FechaIngreso = hoy,
+            FechaSalida = null,
+            FechaUltimoCobro = hoy
+        });
+
+        activo.Estado = EstadoActivo.Asignado;
+        activo.ProyectoActualId = accionProyectoId;
+
+        await Db.SaveChangesAsync();
+
+        filaAccionId = null;
+        await CargarActivosAsync();
+    }
+
+    private async Task ConfirmarRetornarAsync(Activo activoOriginal)
+    {
+        errorMessage = null;
+
+        var activo = await Db.Activos.FirstOrDefaultAsync(a => a.Id == activoOriginal.Id);
+        if (activo is null || activo.ProyectoActualId is null)
+        {
+            errorMessage = "El activo no está asignado a ningún proyecto actualmente.";
+            await CargarActivosAsync();
+            return;
+        }
+
+        var proyectoAnteriorId = activo.ProyectoActualId;
+        var estadoAnterior = activo.Estado;
+        var hoy = DateOnly.FromDateTime(DateTime.Now);
+
+        var asignacionAbierta = await Db.AsignacionesActivoProyecto
+            .Where(a => a.ActivoId == activo.Id && a.FechaSalida == null)
+            .OrderByDescending(a => a.FechaIngreso)
+            .FirstOrDefaultAsync();
+
+        if (asignacionAbierta is not null)
+        {
+            asignacionAbierta.FechaSalida = hoy;
+        }
+
+        var usuarioId = await ObtenerUsuarioActualIdAsync();
+
+        Db.Movimientos.Add(new Movimiento
+        {
+            ActivoId = activo.Id,
+            ProyectoId = proyectoAnteriorId,
+            TipoMovimiento = TipoMovimiento.RetornoABodega,
+            EstadoAnterior = estadoAnterior,
+            EstadoNuevo = EstadoActivo.Disponible,
+            FechaMovimiento = DateTime.Now,
+            UsuarioId = usuarioId
+        });
+
+        activo.Estado = EstadoActivo.Disponible;
+        activo.ProyectoActualId = null;
+
+        await Db.SaveChangesAsync();
+        await CargarActivosAsync();
+    }
+
+    private async Task ConfirmarCambiarEstadoAsync(Activo activoOriginal)
+    {
+        errorMessage = null;
+
+        var activo = await Db.Activos.FirstOrDefaultAsync(a => a.Id == activoOriginal.Id);
+        if (activo is null)
+        {
+            errorMessage = "El activo ya no existe.";
+            filaAccionId = null;
+            await CargarActivosAsync();
+            return;
+        }
+
+        if (accionNuevoEstado == activo.Estado)
+        {
+            errorMessage = "Seleccioná un estado distinto al actual.";
+            return;
+        }
+
+        var usuarioId = await ObtenerUsuarioActualIdAsync();
+        var estadoAnterior = activo.Estado;
+
+        Db.Movimientos.Add(new Movimiento
+        {
+            ActivoId = activo.Id,
+            ProyectoId = activo.ProyectoActualId,
+            TipoMovimiento = TipoMovimiento.CambioDeEstado,
+            EstadoAnterior = estadoAnterior,
+            EstadoNuevo = accionNuevoEstado,
+            FechaMovimiento = DateTime.Now,
+            UsuarioId = usuarioId,
+            Observacion = string.IsNullOrWhiteSpace(accionObservacion) ? null : accionObservacion.Trim()
+        });
+
+        activo.Estado = accionNuevoEstado;
+
+        await Db.SaveChangesAsync();
+
+        filaAccionId = null;
+        await CargarActivosAsync();
+    }
+
+    private static string EtiquetaEstado(EstadoActivo estado) => estado switch
+    {
+        EstadoActivo.Disponible => "Disponible",
+        EstadoActivo.Asignado => "Asignado",
+        EstadoActivo.EnReparacion => "En Reparación",
+        EstadoActivo.Danado => "Dañado",
+        _ => estado.ToString()
+    };
+
+    private class ActivoFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "La placa es obligatoria")]
+        public string Placa { get; set; } = string.Empty;
+
+        public int TipoEquipoId { get; set; }
+    }
+}

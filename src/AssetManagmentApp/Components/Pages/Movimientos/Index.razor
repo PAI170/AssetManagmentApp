@@ -1,0 +1,202 @@
+@page "/movimientos"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using AssetManagmentApp.Data
+@using AssetManagmentApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+
+<PageTitle>Historial de Movimientos</PageTitle>
+
+<h1>Historial de Movimientos</h1>
+
+<div class="row g-2 mb-3 align-items-end">
+    <div class="col-auto">
+        <label class="form-label">Activo</label>
+        <select class="form-select" @bind="filtroActivoId">
+            <option value="">Todos</option>
+            @if (activos is not null)
+            {
+                @foreach (var activo in activos)
+                {
+                    <option value="@activo.Id">@activo.Placa</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label">Proyecto</label>
+        <select class="form-select" @bind="filtroProyectoId">
+            <option value="">Todos</option>
+            @if (proyectos is not null)
+            {
+                @foreach (var proyecto in proyectos)
+                {
+                    <option value="@proyecto.Id">@proyecto.Nombre</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label">Usuario</label>
+        <select class="form-select" @bind="filtroUsuarioId">
+            <option value="">Todos</option>
+            @if (usuarios is not null)
+            {
+                @foreach (var usuario in usuarios)
+                {
+                    <option value="@usuario.Id">@usuario.Nombre</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label">Tipo de movimiento</label>
+        <select class="form-select" @bind="filtroTipoMovimiento">
+            <option value="">Todos</option>
+            @foreach (var tipo in Enum.GetValues<TipoMovimiento>())
+            {
+                <option value="@tipo">@EtiquetaTipoMovimiento(tipo)</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label">Desde</label>
+        <input type="date" class="form-control" @bind="filtroDesde" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label">Hasta</label>
+        <input type="date" class="form-control" @bind="filtroHasta" />
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary" @onclick="AplicarFiltrosAsync">Filtrar</button>
+        <button class="btn btn-outline-secondary" @onclick="LimpiarFiltrosAsync">Limpiar</button>
+    </div>
+</div>
+
+@if (movimientos is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else if (movimientos.Count == 0)
+{
+    <p><em>No hay movimientos que coincidan con el filtro.</em></p>
+}
+else
+{
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Activo</th>
+                <th>Proyecto</th>
+                <th>Tipo</th>
+                <th>Estado anterior</th>
+                <th>Estado nuevo</th>
+                <th>Usuario</th>
+                <th>Observación</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var mov in movimientos)
+            {
+                <tr>
+                    <td>@mov.FechaMovimiento.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@mov.Activo.Placa</td>
+                    <td>@(mov.Proyecto?.Nombre ?? "Bodega")</td>
+                    <td>@EtiquetaTipoMovimiento(mov.TipoMovimiento)</td>
+                    <td>@mov.EstadoAnterior</td>
+                    <td>@mov.EstadoNuevo</td>
+                    <td>@mov.Usuario.Nombre</td>
+                    <td>@mov.Observacion</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Movimiento>? movimientos;
+    private List<Activo>? activos;
+    private List<Proyecto>? proyectos;
+    private List<ApplicationUser>? usuarios;
+
+    private string filtroActivoId = "";
+    private string filtroProyectoId = "";
+    private string filtroUsuarioId = "";
+    private string filtroTipoMovimiento = "";
+    private DateTime? filtroDesde;
+    private DateTime? filtroHasta;
+
+    protected override async Task OnInitializedAsync()
+    {
+        activos = await Db.Activos.AsNoTracking().OrderBy(a => a.Placa).ToListAsync();
+        proyectos = await Db.Proyectos.AsNoTracking().OrderBy(p => p.Nombre).ToListAsync();
+        usuarios = await Db.Users.AsNoTracking().OrderBy(u => u.Nombre).ToListAsync();
+        await CargarMovimientosAsync();
+    }
+
+    private async Task CargarMovimientosAsync()
+    {
+        var query = Db.Movimientos
+            .AsNoTracking()
+            .Include(m => m.Activo)
+            .Include(m => m.Proyecto)
+            .Include(m => m.Usuario)
+            .AsQueryable();
+
+        if (int.TryParse(filtroActivoId, out var activoId))
+        {
+            query = query.Where(m => m.ActivoId == activoId);
+        }
+
+        if (int.TryParse(filtroProyectoId, out var proyectoId))
+        {
+            query = query.Where(m => m.ProyectoId == proyectoId);
+        }
+
+        if (int.TryParse(filtroUsuarioId, out var usuarioId))
+        {
+            query = query.Where(m => m.UsuarioId == usuarioId);
+        }
+
+        if (Enum.TryParse<TipoMovimiento>(filtroTipoMovimiento, out var tipoMovimiento))
+        {
+            query = query.Where(m => m.TipoMovimiento == tipoMovimiento);
+        }
+
+        if (filtroDesde is not null)
+        {
+            query = query.Where(m => m.FechaMovimiento >= filtroDesde.Value);
+        }
+
+        if (filtroHasta is not null)
+        {
+            var hastaInclusive = filtroHasta.Value.Date.AddDays(1);
+            query = query.Where(m => m.FechaMovimiento < hastaInclusive);
+        }
+
+        movimientos = await query.OrderByDescending(m => m.FechaMovimiento).ToListAsync();
+    }
+
+    private async Task AplicarFiltrosAsync() => await CargarMovimientosAsync();
+
+    private async Task LimpiarFiltrosAsync()
+    {
+        filtroActivoId = "";
+        filtroProyectoId = "";
+        filtroUsuarioId = "";
+        filtroTipoMovimiento = "";
+        filtroDesde = null;
+        filtroHasta = null;
+        await CargarMovimientosAsync();
+    }
+
+    private static string EtiquetaTipoMovimiento(TipoMovimiento tipo) => tipo switch
+    {
+        TipoMovimiento.Asignacion => "Asignación",
+        TipoMovimiento.RetornoABodega => "Retorno a bodega",
+        TipoMovimiento.CambioDeEstado => "Cambio de estado",
+        _ => tipo.ToString()
+    };
+}
