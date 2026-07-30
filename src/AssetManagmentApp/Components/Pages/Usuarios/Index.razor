@@ -1,0 +1,289 @@
+@page "/usuarios"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@using System.ComponentModel.DataAnnotations
+@using AssetManagmentApp.Models
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager
+
+<PageTitle>Usuarios</PageTitle>
+
+<h1>Usuarios</h1>
+
+@if (mensaje is not null)
+{
+    <div class="alert alert-success">@mensaje</div>
+}
+@if (errorMessage is not null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+<button class="btn btn-primary mb-3" @onclick="MostrarFormularioCreacion">+ Nuevo usuario</button>
+
+@if (mostrandoCreacion)
+{
+    <EditForm Model="nuevoUsuario" OnValidSubmit="CrearUsuarioAsync" class="card card-body mb-3">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="mb-2">
+            <label class="form-label">Nombre</label>
+            <InputText class="form-control" @bind-Value="nuevoUsuario.Nombre" />
+        </div>
+        <div class="mb-2">
+            <label class="form-label">Correo</label>
+            <InputText class="form-control" @bind-Value="nuevoUsuario.Correo" />
+        </div>
+        <div class="mb-2">
+            <label class="form-label">Rol</label>
+            <InputSelect class="form-select" @bind-Value="nuevoUsuario.Rol">
+                <option value="Admin">Admin</option>
+                <option value="Consultor">Consultor</option>
+            </InputSelect>
+        </div>
+        <div class="mb-2">
+            <label class="form-label">Contraseña</label>
+            <InputText type="password" class="form-control" @bind-Value="nuevoUsuario.Password" />
+        </div>
+        <div>
+            <button type="submit" class="btn btn-success">Guardar</button>
+            <button type="button" class="btn btn-secondary" @onclick="CancelarCreacion">Cancelar</button>
+        </div>
+    </EditForm>
+}
+
+@if (usuarios is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else
+{
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var fila in usuarios)
+            {
+                <tr>
+                    <td>@fila.Usuario.Nombre</td>
+                    <td>@fila.Usuario.Email</td>
+                    <td>@fila.Rol</td>
+                    <td>
+                        @if (!fila.Usuario.Activo)
+                        {
+                            <span class="badge bg-secondary">Desactivado</span>
+                        }
+                        else if (fila.Usuario.LockoutEnd is not null && fila.Usuario.LockoutEnd > DateTimeOffset.UtcNow)
+                        {
+                            <span class="badge bg-danger">Bloqueado hasta @fila.Usuario.LockoutEnd.Value.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">Activo</span>
+                        }
+                    </td>
+                    <td>
+                        @if (cambiandoPasswordId == fila.Usuario.Id)
+                        {
+                            <div class="d-flex gap-1 align-items-center">
+                                <input type="password" class="form-control form-control-sm" placeholder="Nueva contraseña" @bind="nuevaPassword" />
+                                <button class="btn btn-sm btn-success" @onclick="() => ConfirmarCambiarPasswordAsync(fila.Usuario)">Confirmar</button>
+                                <button class="btn btn-sm btn-secondary" @onclick="CancelarCambiarPassword">Cancelar</button>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="d-flex gap-1">
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => IniciarCambiarPassword(fila.Usuario.Id)">Cambiar contraseña</button>
+
+                                @if (fila.Usuario.Id != usuarioActualId)
+                                {
+                                    @if (fila.Usuario.Activo)
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DesactivarAsync(fila.Usuario)">Desactivar</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-success" @onclick="() => ActivarAsync(fila.Usuario)">Activar</button>
+                                    }
+                                }
+
+                                @if (fila.Usuario.LockoutEnd is not null && fila.Usuario.LockoutEnd > DateTimeOffset.UtcNow)
+                                {
+                                    <button class="btn btn-sm btn-outline-warning" @onclick="() => DesbloquearAsync(fila.Usuario)">Desbloquear</button>
+                                }
+                            </div>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<FilaUsuario>? usuarios;
+    private bool mostrandoCreacion;
+    private NuevoUsuarioModel nuevoUsuario = new();
+    private string? errorMessage;
+    private string? mensaje;
+    private int? cambiandoPasswordId;
+    private string nuevaPassword = string.Empty;
+    private int usuarioActualId;
+
+    [CascadingParameter]
+    private Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateTask!;
+        var email = authState.User.Identity?.Name;
+        if (email is not null)
+        {
+            var actual = await UserManager.FindByEmailAsync(email);
+            usuarioActualId = actual?.Id ?? 0;
+        }
+
+        await CargarAsync();
+    }
+
+    private async Task CargarAsync()
+    {
+        var todos = UserManager.Users.OrderBy(u => u.Nombre).ToList();
+        var filas = new List<FilaUsuario>();
+        foreach (var u in todos)
+        {
+            var roles = await UserManager.GetRolesAsync(u);
+            filas.Add(new FilaUsuario(u, roles.FirstOrDefault() ?? "(sin rol)"));
+        }
+        usuarios = filas;
+    }
+
+    private void MostrarFormularioCreacion()
+    {
+        nuevoUsuario = new NuevoUsuarioModel();
+        errorMessage = null;
+        mensaje = null;
+        mostrandoCreacion = true;
+    }
+
+    private void CancelarCreacion()
+    {
+        mostrandoCreacion = false;
+    }
+
+    private async Task CrearUsuarioAsync()
+    {
+        errorMessage = null;
+        mensaje = null;
+
+        var usuario = new ApplicationUser
+        {
+            UserName = nuevoUsuario.Correo.Trim(),
+            Email = nuevoUsuario.Correo.Trim(),
+            Nombre = nuevoUsuario.Nombre.Trim(),
+            Activo = true,
+            EmailConfirmed = true,
+            LockoutEnabled = true
+        };
+
+        var result = await UserManager.CreateAsync(usuario, nuevoUsuario.Password);
+        if (!result.Succeeded)
+        {
+            errorMessage = string.Join(" ", result.Errors.Select(e => e.Description));
+            return;
+        }
+
+        await UserManager.AddToRoleAsync(usuario, nuevoUsuario.Rol);
+
+        mostrandoCreacion = false;
+        mensaje = $"Usuario {usuario.Email} creado.";
+        await CargarAsync();
+    }
+
+    private void IniciarCambiarPassword(int userId)
+    {
+        cambiandoPasswordId = userId;
+        nuevaPassword = string.Empty;
+        errorMessage = null;
+        mensaje = null;
+    }
+
+    private void CancelarCambiarPassword()
+    {
+        cambiandoPasswordId = null;
+    }
+
+    private async Task ConfirmarCambiarPasswordAsync(ApplicationUser usuario)
+    {
+        errorMessage = null;
+        mensaje = null;
+
+        if (nuevaPassword.Length < 8)
+        {
+            errorMessage = "La contraseña debe tener al menos 8 caracteres.";
+            return;
+        }
+
+        var token = await UserManager.GeneratePasswordResetTokenAsync(usuario);
+        var result = await UserManager.ResetPasswordAsync(usuario, token, nuevaPassword);
+        if (!result.Succeeded)
+        {
+            errorMessage = string.Join(" ", result.Errors.Select(e => e.Description));
+            return;
+        }
+
+        cambiandoPasswordId = null;
+        mensaje = $"Contraseña actualizada para {usuario.Email}.";
+    }
+
+    private async Task DesactivarAsync(ApplicationUser usuario)
+    {
+        usuario.Activo = false;
+        await UserManager.UpdateAsync(usuario);
+        mensaje = $"{usuario.Email} desactivado.";
+        await CargarAsync();
+    }
+
+    private async Task ActivarAsync(ApplicationUser usuario)
+    {
+        usuario.Activo = true;
+        await UserManager.UpdateAsync(usuario);
+        mensaje = $"{usuario.Email} activado.";
+        await CargarAsync();
+    }
+
+    private async Task DesbloquearAsync(ApplicationUser usuario)
+    {
+        await UserManager.SetLockoutEndDateAsync(usuario, null);
+        await UserManager.ResetAccessFailedCountAsync(usuario);
+        mensaje = $"{usuario.Email} desbloqueado.";
+        await CargarAsync();
+    }
+
+    private record FilaUsuario(ApplicationUser Usuario, string Rol);
+
+    private class NuevoUsuarioModel
+    {
+        [Required(ErrorMessage = "El nombre es obligatorio")]
+        public string Nombre { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El correo es obligatorio")]
+        [EmailAddress]
+        public string Correo { get; set; } = string.Empty;
+
+        [Required]
+        public string Rol { get; set; } = "Consultor";
+
+        [Required(ErrorMessage = "La contraseña es obligatoria")]
+        [MinLength(8, ErrorMessage = "Mínimo 8 caracteres")]
+        public string Password { get; set; } = string.Empty;
+    }
+}
