@@ -1,4 +1,5 @@
 @page "/login"
+@layout AssetManagmentApp.Components.Layout.LoginLayout
 @using System.ComponentModel.DataAnnotations
 @using AssetManagmentApp.Models
 @using Microsoft.AspNetCore.Identity
@@ -7,26 +8,32 @@
 
 <PageTitle>Iniciar sesión</PageTitle>
 
-<h1>Iniciar sesión</h1>
+<div class="login-card">
+    <img class="login-logo" src="images/rodcast-logo.png" alt="Rodcast Solutions" />
+    <div class="login-title">GESTIÓN DE INVENTARIO</div>
+    <div class="login-subtitle">Iniciá sesión para continuar</div>
 
-@if (errorMessage is not null)
-{
-    <div class="alert alert-danger">@errorMessage</div>
-}
+    @if (errorMessage is not null)
+    {
+        <div class="alert alert-danger py-2">@errorMessage</div>
+    }
 
-<EditForm Model="Input" method="post" OnValidSubmit="LoginUserAsync" FormName="login" class="card card-body" style="max-width: 400px;">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
-    <div class="mb-2">
-        <label class="form-label">Correo</label>
-        <InputText class="form-control" @bind-Value="Input.Email" />
-    </div>
-    <div class="mb-2">
-        <label class="form-label">Contraseña</label>
-        <InputText type="password" class="form-control" @bind-Value="Input.Password" />
-    </div>
-    <button type="submit" class="btn btn-primary">Entrar</button>
-</EditForm>
+    <EditForm Model="Input" method="post" OnValidSubmit="LoginUserAsync" FormName="login">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="mb-3">
+            <label class="form-label">Correo</label>
+            <InputText class="form-control" @bind-Value="Input.Email" autocomplete="username" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Contraseña</label>
+            <InputText type="password" class="form-control" @bind-Value="Input.Password" autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn btn-login">Iniciar sesión</button>
+    </EditForm>
+
+    <div class="login-helper">¿Olvidaste tu contraseña? Pedile a un administrador que te la restablezca.</div>
+</div>
 
 @code {
     private string? errorMessage;
