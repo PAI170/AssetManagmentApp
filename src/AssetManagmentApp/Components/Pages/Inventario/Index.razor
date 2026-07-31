@@ -65,6 +65,36 @@
     </div>
 </div>
 
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        @if (seleccionados.Count > 0)
+        {
+            <div class="d-flex gap-2 align-items-end mb-3 p-2 border rounded">
+                <div><strong>@seleccionados.Count</strong> seleccionado(s)</div>
+                <div>
+                    <label class="form-label mb-0">Proyecto</label>
+                    <select class="form-select form-select-sm" @bind="bulkProyectoId">
+                        <option value="0">-- Proyecto --</option>
+                        @if (proyectos is not null)
+                        {
+                            @foreach (var proyecto in proyectos)
+                            {
+                                <option value="@proyecto.Id">@proyecto.Nombre</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label mb-0">Fecha traslado</label>
+                    <input type="date" class="form-control form-control-sm" @bind="bulkFecha" max="@fechaMaxima" />
+                </div>
+                <button class="btn btn-sm btn-success" @onclick="ConfirmarAsignarMasivoAsync">Asignar seleccionados</button>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="LimpiarSeleccion">Cancelar selección</button>
+            </div>
+        }
+    </Authorized>
+</AuthorizeView>
+
 @if (activos is null)
 {
     <p><em>Cargando...</em></p>
@@ -79,6 +109,13 @@ else
     <table class="table table-striped align-middle">
         <thead>
             <tr>
+                <th>
+                    <AuthorizeView Roles="Admin">
+                        <Authorized>
+                            <input type="checkbox" class="form-check-input" checked="@TodosDisponiblesSeleccionados" @onchange="ToggleSeleccionarTodos" title="Seleccionar todos los disponibles" />
+                        </Authorized>
+                    </AuthorizeView>
+                </th>
                 <th>Placa</th>
                 <th>Tipo</th>
                 <th>Estado</th>
@@ -91,6 +128,16 @@ else
             @foreach (var activo in activos)
             {
                 <tr>
+                    <td>
+                        <AuthorizeView Roles="Admin">
+                            <Authorized>
+                                @if (activo.Estado == EstadoActivo.Disponible)
+                                {
+                                    <input type="checkbox" class="form-check-input" checked="@seleccionados.Contains(activo.Id)" @onchange="e => ToggleSeleccion(activo.Id, (bool)e.Value!)" />
+                                }
+                            </Authorized>
+                        </AuthorizeView>
+                    </td>
                     <td>@activo.Placa</td>
                     <td>@activo.TipoEquipo.Nombre</td>
                     <td>@EtiquetaEstado(activo.Estado)</td>
@@ -184,6 +231,10 @@ else
     private string accionObservacion = "";
     private readonly string fechaMaxima = DateOnly.FromDateTime(DateTime.Now).ToString("yyyy-MM-dd");
 
+    private readonly HashSet<int> seleccionados = [];
+    private int bulkProyectoId;
+    private DateOnly bulkFecha = DateOnly.FromDateTime(DateTime.Now);
+
     [CascadingParameter]
     private Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthStateTask { get; set; }
 
@@ -222,14 +273,63 @@ else
         activos = await query.OrderBy(a => a.Placa).ToListAsync();
     }
 
-    private async Task AplicarFiltrosAsync() => await CargarActivosAsync();
+    private async Task AplicarFiltrosAsync()
+    {
+        seleccionados.Clear();
+        await CargarActivosAsync();
+    }
 
     private async Task LimpiarFiltrosAsync()
     {
         filtroEstado = "";
         filtroTipoEquipoId = "";
         filtroProyectoId = "";
+        seleccionados.Clear();
         await CargarActivosAsync();
+    }
+
+    private bool TodosDisponiblesSeleccionados =>
+        activos is not null
+        && activos.Any(a => a.Estado == EstadoActivo.Disponible)
+        && activos.Where(a => a.Estado == EstadoActivo.Disponible).All(a => seleccionados.Contains(a.Id));
+
+    private void ToggleSeleccion(int activoId, bool marcado)
+    {
+        if (marcado)
+        {
+            seleccionados.Add(activoId);
+        }
+        else
+        {
+            seleccionados.Remove(activoId);
+        }
+    }
+
+    private void ToggleSeleccionarTodos(ChangeEventArgs e)
+    {
+        var marcar = e.Value is bool valor && valor;
+
+        if (!marcar)
+        {
+            seleccionados.Clear();
+            return;
+        }
+
+        if (activos is null)
+        {
+            return;
+        }
+
+        foreach (var activo in activos.Where(a => a.Estado == EstadoActivo.Disponible))
+        {
+            seleccionados.Add(activo.Id);
+        }
+    }
+
+    private void LimpiarSeleccion()
+    {
+        seleccionados.Clear();
+        errorMessage = null;
     }
 
     private void AbrirAsignar(Activo activo)
@@ -330,6 +430,75 @@ else
 
         filaAccionId = null;
         await CargarActivosAsync();
+    }
+
+    private async Task ConfirmarAsignarMasivoAsync()
+    {
+        errorMessage = null;
+
+        if (bulkProyectoId <= 0)
+        {
+            errorMessage = "Seleccioná un proyecto.";
+            return;
+        }
+
+        var hoy = DateOnly.FromDateTime(DateTime.Now);
+        if (bulkFecha > hoy)
+        {
+            errorMessage = "La fecha de traslado no puede ser futura.";
+            return;
+        }
+
+        var idsSeleccionados = seleccionados.ToList();
+        if (idsSeleccionados.Count == 0)
+        {
+            errorMessage = "No hay activos seleccionados.";
+            return;
+        }
+
+        var activosDb = await Db.Activos
+            .Where(a => idsSeleccionados.Contains(a.Id) && a.Estado == EstadoActivo.Disponible)
+            .ToListAsync();
+
+        var usuarioId = await ObtenerUsuarioActualIdAsync();
+
+        foreach (var activo in activosDb)
+        {
+            Db.Movimientos.Add(new Movimiento
+            {
+                ActivoId = activo.Id,
+                ProyectoId = bulkProyectoId,
+                TipoMovimiento = TipoMovimiento.Asignacion,
+                EstadoAnterior = EstadoActivo.Disponible,
+                EstadoNuevo = EstadoActivo.Asignado,
+                FechaMovimiento = bulkFecha.ToDateTime(TimeOnly.FromDateTime(DateTime.Now)),
+                UsuarioId = usuarioId
+            });
+
+            Db.AsignacionesActivoProyecto.Add(new AsignacionActivoProyecto
+            {
+                ActivoId = activo.Id,
+                ProyectoId = bulkProyectoId,
+                FechaIngreso = bulkFecha,
+                FechaSalida = null,
+                FechaUltimoCobro = bulkFecha
+            });
+
+            activo.Estado = EstadoActivo.Asignado;
+            activo.ProyectoActualId = bulkProyectoId;
+        }
+
+        await Db.SaveChangesAsync();
+
+        var faltantes = idsSeleccionados.Count - activosDb.Count;
+        seleccionados.Clear();
+        bulkProyectoId = 0;
+        await CargarActivosAsync();
+
+        if (faltantes > 0)
+        {
+            errorMessage = $"{faltantes} activo(s) ya no estaban disponibles y no se asignaron.";
+        }
     }
 
     private async Task ConfirmarRetornarAsync(Activo activoOriginal)
