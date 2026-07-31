@@ -114,6 +114,22 @@ a, .btn-link {
     background-color: transparent;
 }
 
+.table-responsive .table th,
+.table-responsive .table td {
+    white-space: nowrap;
+}
+
+.page-card .row.g-2.align-items-end {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+}
+
+    .page-card .row.g-2.align-items-end > [class^="col"],
+    .page-card .row.g-2.align-items-end > [class*=" col"] {
+        flex-shrink: 0;
+    }
+
 h1:focus {
     outline: none;
 }
