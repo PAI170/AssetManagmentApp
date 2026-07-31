@@ -4,6 +4,7 @@
 @using AssetManagmentApp.Data
 @using AssetManagmentApp.Models
 @using Microsoft.EntityFrameworkCore
+@using MySqlConnector
 @using System.Text.RegularExpressions
 @inject AppDbContext Db
 @inject NavigationManager NavigationManager
@@ -134,14 +135,20 @@
         {
             await Db.SaveChangesAsync();
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex)
         {
-            errorMessage = "Ya existe un activo con alguna de esas placas.";
+            errorMessage = EsErrorDeDuplicado(ex)
+                ? "Ya existe un activo con alguna de esas placas."
+                : "No se pudo guardar: hubo un error de conexión con la base de datos. Intentá de nuevo.";
             return;
         }
 
         NavigationManager.NavigateTo("/inventario");
     }
+
+    private static bool EsErrorDeDuplicado(DbUpdateException ex) =>
+        ex.InnerException is MySqlException mysqlEx
+        && mysqlEx.ErrorCode == MySqlErrorCode.DuplicateKeyEntry;
 
     private static string SanitizarPrefijo(string nombre)
     {
