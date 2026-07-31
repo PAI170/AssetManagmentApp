@@ -4,6 +4,7 @@
 @using AssetManagmentApp.Data
 @using AssetManagmentApp.Models
 @using Microsoft.EntityFrameworkCore
+@using System.Text.RegularExpressions
 @inject AppDbContext Db
 @inject NavigationManager NavigationManager
 
@@ -24,11 +25,11 @@
     <DataAnnotationsValidator />
     <ValidationSummary />
     <div class="mb-2">
-        <label class="form-label">Placa</label>
+        <label class="form-label">Placa @(nuevoActivo.Cantidad > 1 ? "(opcional)" : "")</label>
         <InputText class="form-control" @bind-Value="nuevoActivo.Placa" />
         @if (nuevoActivo.Cantidad > 1)
         {
-            <div class="form-text">Se usará como prefijo: se generarán @nuevoActivo.Cantidad placas automáticas (ej. @(string.IsNullOrWhiteSpace(nuevoActivo.Placa) ? "PREFIJO" : nuevoActivo.Placa.Trim())-001, -002...).</div>
+            <div class="form-text">Se usará como prefijo para generar @nuevoActivo.Cantidad placas automáticas. Si la dejás vacía, se usa el nombre del tipo de equipo (ej. "ANDAMIO-001", "ANDAMIO-002"...).</div>
         }
     </div>
     <div class="mb-2">
@@ -89,6 +90,18 @@
             return;
         }
 
+        if (nuevoActivo.Cantidad == 1 && placaBase.Length == 0)
+        {
+            errorMessage = "La placa es obligatoria.";
+            return;
+        }
+
+        if (placaBase.Length == 0)
+        {
+            var tipoEquipo = tiposEquipo?.FirstOrDefault(t => t.Id == nuevoActivo.TipoEquipoId);
+            placaBase = SanitizarPrefijo(tipoEquipo?.Nombre ?? "EQUIPO");
+        }
+
         var placas = nuevoActivo.Cantidad == 1
             ? [placaBase]
             : await GenerarPlacasConsecutivasAsync(placaBase, nuevoActivo.Cantidad);
@@ -130,6 +143,17 @@
         NavigationManager.NavigateTo("/inventario");
     }
 
+    private static string SanitizarPrefijo(string nombre)
+    {
+        var sinAcentos = nombre
+            .Normalize(System.Text.NormalizationForm.FormD);
+        var soloAscii = new string(sinAcentos
+            .Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark)
+            .ToArray());
+        var prefijo = Regex.Replace(soloAscii.ToUpperInvariant(), @"[^A-Z0-9]+", "-").Trim('-');
+        return prefijo.Length == 0 ? "EQUIPO" : prefijo;
+    }
+
     private async Task<List<string>> GenerarPlacasConsecutivasAsync(string prefijo, int cantidad)
     {
         var patron = $"{prefijo}-";
@@ -154,7 +178,6 @@
 
     private class ActivoFormModel
     {
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "La placa es obligatoria")]
         public string Placa { get; set; } = string.Empty;
 
         public int TipoEquipoId { get; set; }
