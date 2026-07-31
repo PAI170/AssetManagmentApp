@@ -2,23 +2,6 @@
     background-image: linear-gradient(180deg, var(--brand-navy-light, #2A4362) 0%, var(--brand-navy-dark, #0E1727) 100%);
 }
 
-.navbar-toggler {
-    appearance: none;
-    cursor: pointer;
-    width: 3.5rem;
-    height: 2.5rem;
-    color: white;
-    position: absolute;
-    top: 0.5rem;
-    right: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.55%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") no-repeat center/1.75rem rgba(255, 255, 255, 0.1);
-}
-
-.navbar-toggler:checked {
-    background-color: rgba(255, 255, 255, 0.5);
-}
-
 .top-row {
     height: 3.5rem;
     background-color: rgba(0,0,0,0.4);
@@ -28,11 +11,15 @@
     font-size: 1.1rem;
 }
 
-.navbar-brand-logo img {
-    height: 2rem;
-    width: auto;
-    display: block;
+.navbar-brand-logo {
+    display: none;
 }
+
+    .navbar-brand-logo img {
+        height: 2rem;
+        width: auto;
+        display: block;
+    }
 
 .nav-item ::deep .bi {
     display: inline-block;
@@ -125,29 +112,24 @@
         font-weight: 600;
     }
 
-.sidebar.colapsado .nav-label {
-    display: none;
-}
-
-.sidebar.colapsado .nav-chevron {
-    display: none;
-}
-
-.sidebar.colapsado .nav-item ::deep .nav-link {
-    justify-content: center;
-    padding-left: 0;
-    padding-right: 0;
-}
-
-.sidebar.colapsado .nav-item ::deep .bi {
-    margin-right: 0;
-}
-
+/* Mobile: hidden by default (logo only), full overlay when opened via the same toggle button used to collapse the desktop sidebar */
 @media (max-width: 640.98px) {
     .sidebar {
         position: sticky;
         top: 0;
         z-index: 1030;
+    }
+
+    .container-fluid {
+        justify-content: center;
+    }
+
+    .navbar-brand {
+        display: none;
+    }
+
+    .navbar-brand-logo {
+        display: block;
     }
 
     .nav-scrollable {
@@ -162,18 +144,28 @@
         transform: translateX(-100%);
         transition: transform 0.25s ease-in-out;
         box-shadow: 4px 0 12px rgba(0, 0, 0, 0.35);
+        z-index: 1030;
     }
 
-        .navbar-toggler:checked ~ .nav-scrollable {
-            transform: translateX(0);
-        }
-}
+    .sidebar.colapsado .container-fluid {
+        justify-content: flex-start;
+    }
 
-@media (min-width: 641px) {
-    .navbar-toggler {
+    .sidebar.colapsado .navbar-brand {
+        display: block;
+    }
+
+    .sidebar.colapsado .navbar-brand-logo {
         display: none;
     }
 
+    .sidebar.colapsado .nav-scrollable {
+        transform: translateX(0);
+    }
+}
+
+/* Desktop: full sidebar by default, collapses to an icon-only rail via the toggle button */
+@media (min-width: 641px) {
     .sidebar {
         width: 250px;
         height: 100vh;
@@ -182,16 +174,47 @@
         transition: width 0.15s ease-in-out;
     }
 
-        .sidebar.colapsado {
-            width: 4.5rem;
-        }
-
     .nav-scrollable {
-        /* Never collapse the sidebar for wide screens */
         display: block;
-
-        /* Allow sidebar to scroll for tall menus */
         height: calc(100vh - 3.5rem);
         overflow-y: auto;
+    }
+
+    .sidebar.colapsado {
+        width: 4.5rem;
+    }
+
+    .sidebar.colapsado .container-fluid {
+        justify-content: center;
+    }
+
+    .sidebar.colapsado .navbar-brand {
+        display: none;
+    }
+
+    .sidebar.colapsado .navbar-brand-logo {
+        display: block;
+    }
+
+    .sidebar.colapsado .nav-label {
+        display: none;
+    }
+
+    .sidebar.colapsado .nav-chevron {
+        display: none;
+    }
+
+    .sidebar.colapsado .nav-submenu {
+        display: none;
+    }
+
+    .sidebar.colapsado .nav-item ::deep .nav-link {
+        justify-content: center;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .sidebar.colapsado .nav-item ::deep .bi {
+        margin-right: 0;
     }
 }
