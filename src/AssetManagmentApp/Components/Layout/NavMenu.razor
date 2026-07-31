@@ -127,9 +127,11 @@
 
     private void AlternarGrupo(string grupo)
     {
-        if (!gruposExpandidos.Add(grupo))
+        var estabaAbierto = gruposExpandidos.Contains(grupo);
+        gruposExpandidos.Clear();
+        if (!estabaAbierto)
         {
-            gruposExpandidos.Remove(grupo);
+            gruposExpandidos.Add(grupo);
         }
     }
 
