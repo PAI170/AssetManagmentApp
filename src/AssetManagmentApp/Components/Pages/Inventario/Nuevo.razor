@@ -65,7 +65,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        tiposEquipo = await Db.TiposEquipo.AsNoTracking().OrderBy(t => t.Nombre).ToListAsync();
+        tiposEquipo = await Db.TiposEquipo.AsNoTracking().Where(t => !t.Eliminado).OrderBy(t => t.Nombre).ToListAsync();
     }
 
     private void Cancelar()

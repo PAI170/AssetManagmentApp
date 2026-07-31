@@ -49,6 +49,14 @@ else
                             <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
                         </td>
                     }
+                    else if (eliminandoId == tipo.Id)
+                    {
+                        <td colspan="3" class="text-danger">¿Eliminar "@tipo.Nombre"?</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" @onclick="() => ConfirmarEliminarAsync(tipo)">Confirmar</button>
+                            <button class="btn btn-sm btn-secondary" @onclick="CancelarEliminar">Cancelar</button>
+                        </td>
+                    }
                     else
                     {
                         <td>@tipo.Nombre</td>
@@ -58,6 +66,7 @@ else
                             <AuthorizeView Roles="Admin">
                                 <Authorized>
                                     <button class="btn btn-sm btn-outline-primary" @onclick="() => IniciarEdicion(tipo)">Editar</button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => IniciarEliminar(tipo)">Eliminar</button>
                                 </Authorized>
                             </AuthorizeView>
                         </td>
@@ -74,6 +83,7 @@ else
 @code {
     private List<TipoEquipo>? tipos;
     private int? editandoId;
+    private int? eliminandoId;
     private TipoEquipoFormModel edicion = new();
     private string? errorMessage;
 
@@ -84,12 +94,13 @@ else
 
     private async Task CargarAsync()
     {
-        tipos = await Db.TiposEquipo.AsNoTracking().OrderBy(t => t.Nombre).ToListAsync();
+        tipos = await Db.TiposEquipo.AsNoTracking().Where(t => !t.Eliminado).OrderBy(t => t.Nombre).ToListAsync();
     }
 
     private void IniciarEdicion(TipoEquipo tipo)
     {
         editandoId = tipo.Id;
+        eliminandoId = null;
         edicion = new TipoEquipoFormModel
         {
             Nombre = tipo.Nombre,
@@ -101,6 +112,47 @@ else
     private void CancelarEdicion()
     {
         editandoId = null;
+    }
+
+    private void IniciarEliminar(TipoEquipo tipo)
+    {
+        eliminandoId = tipo.Id;
+        editandoId = null;
+        errorMessage = null;
+    }
+
+    private void CancelarEliminar()
+    {
+        eliminandoId = null;
+    }
+
+    private async Task ConfirmarEliminarAsync(TipoEquipo tipoOriginal)
+    {
+        errorMessage = null;
+
+        var tipo = await Db.TiposEquipo.FirstOrDefaultAsync(t => t.Id == tipoOriginal.Id);
+        if (tipo is null)
+        {
+            eliminandoId = null;
+            await CargarAsync();
+            return;
+        }
+
+        var tieneActivos = await Db.Activos.AnyAsync(a => a.TipoEquipoId == tipo.Id);
+
+        if (tieneActivos)
+        {
+            tipo.Eliminado = true;
+        }
+        else
+        {
+            Db.TiposEquipo.Remove(tipo);
+        }
+
+        await Db.SaveChangesAsync();
+
+        eliminandoId = null;
+        await CargarAsync();
     }
 
     private async Task GuardarEdicionAsync(TipoEquipo tipoOriginal)

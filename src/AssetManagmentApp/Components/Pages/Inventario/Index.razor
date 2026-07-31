@@ -186,6 +186,14 @@ else
                                         <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
                                     </div>
                                 }
+                                else if (filaAccionId == activo.Id && filaAccionTipo == "eliminar")
+                                {
+                                    <div class="d-flex gap-1 align-items-center">
+                                        <span class="text-danger">¿Eliminar "@activo.Placa"?</span>
+                                        <button class="btn btn-sm btn-danger" @onclick="() => ConfirmarEliminarAsync(activo)">Confirmar</button>
+                                        <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
+                                    </div>
+                                }
                                 else
                                 {
                                     <div class="d-flex gap-1">
@@ -198,6 +206,10 @@ else
                                             <button class="btn btn-sm btn-outline-warning" @onclick="() => AbrirRetornar(activo)">Retornar a bodega</button>
                                         }
                                         <button class="btn btn-sm btn-outline-secondary" @onclick="() => AbrirCambiarEstado(activo)">Cambiar estado</button>
+                                        @if (activo.Estado != EstadoActivo.Asignado)
+                                        {
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => AbrirEliminar(activo)">Eliminar</button>
+                                        }
                                     </div>
                                 }
                             </Authorized>
@@ -240,7 +252,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        tiposEquipo = await Db.TiposEquipo.AsNoTracking().OrderBy(t => t.Nombre).ToListAsync();
+        tiposEquipo = await Db.TiposEquipo.AsNoTracking().Where(t => !t.Eliminado).OrderBy(t => t.Nombre).ToListAsync();
         proyectos = await Db.Proyectos.AsNoTracking().OrderBy(p => p.Nombre).ToListAsync();
         await CargarActivosAsync();
     }
@@ -251,6 +263,7 @@ else
             .AsNoTracking()
             .Include(a => a.TipoEquipo)
             .Include(a => a.ProyectoActual)
+            .Where(a => !a.Eliminado)
             .AsQueryable();
 
         if (Enum.TryParse<EstadoActivo>(filtroEstado, out var estado))
@@ -355,6 +368,13 @@ else
         filaAccionTipo = "estado";
         accionNuevoEstado = activo.Estado;
         accionObservacion = "";
+        errorMessage = null;
+    }
+
+    private void AbrirEliminar(Activo activo)
+    {
+        filaAccionId = activo.Id;
+        filaAccionTipo = "eliminar";
         errorMessage = null;
     }
 
@@ -555,6 +575,44 @@ else
 
         activo.Estado = EstadoActivo.Disponible;
         activo.ProyectoActualId = null;
+
+        await Db.SaveChangesAsync();
+
+        filaAccionId = null;
+        await CargarActivosAsync();
+    }
+
+    private async Task ConfirmarEliminarAsync(Activo activoOriginal)
+    {
+        errorMessage = null;
+
+        var activo = await Db.Activos.FirstOrDefaultAsync(a => a.Id == activoOriginal.Id);
+        if (activo is null)
+        {
+            filaAccionId = null;
+            await CargarActivosAsync();
+            return;
+        }
+
+        if (activo.Estado == EstadoActivo.Asignado)
+        {
+            errorMessage = "No se puede eliminar un activo asignado a un proyecto. Retornalo a bodega primero.";
+            filaAccionId = null;
+            return;
+        }
+
+        var tieneHistorial = await Db.Movimientos.AnyAsync(m => m.ActivoId == activo.Id)
+            || await Db.AsignacionesActivoProyecto.AnyAsync(a => a.ActivoId == activo.Id)
+            || await Db.ProformaDetalles.AnyAsync(d => d.ActivoId == activo.Id);
+
+        if (tieneHistorial)
+        {
+            activo.Eliminado = true;
+        }
+        else
+        {
+            Db.Activos.Remove(activo);
+        }
 
         await Db.SaveChangesAsync();
 

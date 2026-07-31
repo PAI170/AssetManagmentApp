@@ -10,6 +10,7 @@ public class Activo
     public int? ProyectoActualId { get; set; }
     public Proyecto? ProyectoActual { get; set; }
     public DateOnly FechaRegistro { get; set; }
+    public bool Eliminado { get; set; }
 
     public ICollection<Movimiento> Movimientos { get; set; } = new List<Movimiento>();
     public ICollection<AsignacionActivoProyecto> Asignaciones { get; set; } = new List<AsignacionActivoProyecto>();
