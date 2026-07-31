@@ -107,7 +107,7 @@
 
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
-        ExpandirGrupoActivo();
+        gruposExpandidos.Clear();
         InvokeAsync(StateHasChanged);
     }
 
