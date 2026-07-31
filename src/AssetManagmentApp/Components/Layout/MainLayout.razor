@@ -1,10 +1,7 @@
 @inherits LayoutComponentBase
-@rendermode InteractiveServer
 
 <div class="page">
-    <div class="sidebar @(sidebarColapsado ? "colapsado" : "")">
-        <NavMenu Colapsado="sidebarColapsado" OnAlternarColapso="AlternarSidebar" />
-    </div>
+    <NavMenu />
 
     <main>
         <div class="top-row px-4 d-flex justify-content-end">
@@ -22,12 +19,3 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
-
-@code {
-    private bool sidebarColapsado;
-
-    private void AlternarSidebar()
-    {
-        sidebarColapsado = !sidebarColapsado;
-    }
-}
