@@ -56,7 +56,12 @@ main {
         height: 100vh;
         position: sticky;
         top: 0;
+        transition: width 0.15s ease-in-out;
     }
+
+        .sidebar.colapsado {
+            width: 4.5rem;
+        }
 
     .top-row {
         position: sticky;

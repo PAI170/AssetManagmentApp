@@ -3,27 +3,30 @@
 @rendermode InteractiveServer
 
 <div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Control de Equipos</a>
+    <div class="container-fluid d-flex align-items-center justify-content-between">
+        <a class="navbar-brand @(Colapsado ? "d-none" : "")" href="">Control de Equipos</a>
+        <button type="button" class="btn-collapse-sidebar" title="@(Colapsado ? "Expandir menú" : "Colapsar menú")" @onclick="AlternarColapso">
+            <i class="bi @(Colapsado ? "bi-chevron-double-right" : "bi-chevron-double-left")" aria-hidden="true"></i>
+        </button>
     </div>
 </div>
 
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
-<div class="nav-scrollable" onclick="if (event.target.closest('a')) { document.querySelector('.navbar-toggler').click(); }">
+<div class="nav-scrollable @(Colapsado ? "colapsado" : "")" onclick="if (event.target.closest('a')) { document.querySelector('.navbar-toggler').click(); }">
     <nav class="flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="dashboard">
-                <i class="bi bi-speedometer2" aria-hidden="true"></i> Dashboard
+                <i class="bi bi-speedometer2" aria-hidden="true"></i> <span class="nav-label">Dashboard</span>
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <div class="nav-link nav-group-toggle" role="button" @onclick='() => AlternarGrupo("proyectos")'>
-                <i class="bi bi-diagram-3" aria-hidden="true"></i> Proyectos
+                <i class="bi bi-diagram-3" aria-hidden="true"></i> <span class="nav-label">Proyectos</span>
                 <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("proyectos") ? "rotated" : "")" aria-hidden="true"></i>
             </div>
-            @if (EstaExpandido("proyectos"))
+            @if (EstaExpandido("proyectos") && !Colapsado)
             {
                 <div class="nav-submenu">
                     <NavLink class="nav-sublink" href="proyectos" Match="NavLinkMatch.All">Todos los Proyectos</NavLink>
@@ -34,10 +37,10 @@
 
         <div class="nav-item px-3">
             <div class="nav-link nav-group-toggle" role="button" @onclick='() => AlternarGrupo("inventario")'>
-                <i class="bi bi-box-seam" aria-hidden="true"></i> Inventario
+                <i class="bi bi-box-seam" aria-hidden="true"></i> <span class="nav-label">Inventario</span>
                 <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("inventario") ? "rotated" : "")" aria-hidden="true"></i>
             </div>
-            @if (EstaExpandido("inventario"))
+            @if (EstaExpandido("inventario") && !Colapsado)
             {
                 <div class="nav-submenu">
                     <NavLink class="nav-sublink" href="inventario" Match="NavLinkMatch.All">Todo el Inventario</NavLink>
@@ -49,16 +52,16 @@
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="movimientos">
-                <i class="bi bi-arrow-left-right" aria-hidden="true"></i> Movimientos
+                <i class="bi bi-arrow-left-right" aria-hidden="true"></i> <span class="nav-label">Movimientos</span>
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <div class="nav-link nav-group-toggle" role="button" @onclick='() => AlternarGrupo("tipos-equipo")'>
-                <i class="bi bi-tags" aria-hidden="true"></i> Tipo de Equipo
+                <i class="bi bi-tags" aria-hidden="true"></i> <span class="nav-label">Tipo de Equipo</span>
                 <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("tipos-equipo") ? "rotated" : "")" aria-hidden="true"></i>
             </div>
-            @if (EstaExpandido("tipos-equipo"))
+            @if (EstaExpandido("tipos-equipo") && !Colapsado)
             {
                 <div class="nav-submenu">
                     <NavLink class="nav-sublink" href="tipos-equipo" Match="NavLinkMatch.All">Todos los Tipos</NavLink>
@@ -71,10 +74,10 @@
             <Authorized>
                 <div class="nav-item px-3">
                     <div class="nav-link nav-group-toggle" role="button" @onclick='() => AlternarGrupo("usuarios")'>
-                        <i class="bi bi-people" aria-hidden="true"></i> Usuarios
+                        <i class="bi bi-people" aria-hidden="true"></i> <span class="nav-label">Usuarios</span>
                         <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("usuarios") ? "rotated" : "")" aria-hidden="true"></i>
                     </div>
-                    @if (EstaExpandido("usuarios"))
+                    @if (EstaExpandido("usuarios") && !Colapsado)
                     {
                         <div class="nav-submenu">
                             <NavLink class="nav-sublink" href="usuarios" Match="NavLinkMatch.All">Todos los Usuarios</NavLink>
@@ -89,6 +92,14 @@
 
 @code {
     private readonly HashSet<string> gruposExpandidos = new();
+
+    [Parameter]
+    public bool Colapsado { get; set; }
+
+    [Parameter]
+    public EventCallback OnAlternarColapso { get; set; }
+
+    private Task AlternarColapso() => OnAlternarColapso.InvokeAsync();
 
     protected override void OnInitialized()
     {

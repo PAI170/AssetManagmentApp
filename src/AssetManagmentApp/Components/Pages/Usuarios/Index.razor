@@ -47,9 +47,16 @@ else
                         {
                             <span class="badge bg-secondary">Desactivado</span>
                         }
-                        else if (fila.Usuario.LockoutEnd is not null && fila.Usuario.LockoutEnd > DateTimeOffset.UtcNow)
+                        else if (EstaBloqueado(fila.Usuario))
                         {
-                            <span class="badge bg-danger">Bloqueado hasta @fila.Usuario.LockoutEnd.Value.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                            @if (fila.Usuario.LockoutEnd == DateTimeOffset.MaxValue)
+                            {
+                                <span class="badge bg-danger">Bloqueado</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">Bloqueado hasta @fila.Usuario.LockoutEnd!.Value.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                            }
                         }
                         else
                         {
@@ -82,9 +89,16 @@ else
                                     }
                                 }
 
-                                @if (fila.Usuario.LockoutEnd is not null && fila.Usuario.LockoutEnd > DateTimeOffset.UtcNow)
+                                @if (fila.Usuario.Id != usuarioActualId)
                                 {
-                                    <button class="btn btn-sm btn-outline-warning" @onclick="() => DesbloquearAsync(fila.Usuario)">Desbloquear</button>
+                                    @if (EstaBloqueado(fila.Usuario))
+                                    {
+                                        <button class="btn btn-sm btn-outline-warning" @onclick="() => DesbloquearAsync(fila.Usuario)">Desbloquear</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-dark" @onclick="() => BloquearAsync(fila.Usuario)">Bloquear</button>
+                                    }
                                 }
                             </div>
                         }
@@ -190,6 +204,17 @@ else
         mensaje = $"{usuario.Email} desbloqueado.";
         await CargarAsync();
     }
+
+    private async Task BloquearAsync(ApplicationUser usuario)
+    {
+        await UserManager.SetLockoutEnabledAsync(usuario, true);
+        await UserManager.SetLockoutEndDateAsync(usuario, DateTimeOffset.MaxValue);
+        mensaje = $"{usuario.Email} bloqueado.";
+        await CargarAsync();
+    }
+
+    private static bool EstaBloqueado(ApplicationUser usuario) =>
+        usuario.LockoutEnd is not null && usuario.LockoutEnd > DateTimeOffset.UtcNow;
 
     private record FilaUsuario(ApplicationUser Usuario, string Rol);
 }
