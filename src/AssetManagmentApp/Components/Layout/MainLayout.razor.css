@@ -36,9 +36,6 @@ main {
     display: none;
     height: 2rem;
     width: auto;
-    background-color: var(--brand-navy, #16233A);
-    padding: 0.35rem;
-    border-radius: 6px;
 }
 
 @media (max-width: 640.98px) {
