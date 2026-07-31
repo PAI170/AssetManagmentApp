@@ -32,13 +32,26 @@ main {
         text-overflow: ellipsis;
     }
 
+.mobile-brand-logo {
+    display: none;
+    height: 2rem;
+    width: auto;
+}
+
 @media (max-width: 640.98px) {
     .top-row {
         justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 1031;
     }
 
     .top-row ::deep a, .top-row ::deep .btn-link {
         margin-left: 0;
+    }
+
+    .mobile-brand-logo {
+        display: block;
     }
 }
 

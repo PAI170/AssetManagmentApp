@@ -112,24 +112,10 @@
         font-weight: 600;
     }
 
-/* Mobile: hidden by default (logo only), full overlay when opened via the same toggle button used to collapse the desktop sidebar */
+/* Mobile: NavMenu's own brand bar is replaced by MainLayout's single top bar (logo + toggle + avatar). Only the drawer itself lives here. */
 @media (max-width: 640.98px) {
-    .sidebar {
-        position: sticky;
-        top: 0;
-        z-index: 1030;
-    }
-
-    .container-fluid {
-        justify-content: center;
-    }
-
-    .navbar-brand {
+    .top-row {
         display: none;
-    }
-
-    .navbar-brand-logo {
-        display: block;
     }
 
     .nav-scrollable {
@@ -145,18 +131,6 @@
         transition: transform 0.25s ease-in-out;
         box-shadow: 4px 0 12px rgba(0, 0, 0, 0.35);
         z-index: 1030;
-    }
-
-    .sidebar.colapsado .container-fluid {
-        justify-content: flex-start;
-    }
-
-    .sidebar.colapsado .navbar-brand {
-        display: block;
-    }
-
-    .sidebar.colapsado .navbar-brand-logo {
-        display: none;
     }
 
     .sidebar.colapsado .nav-scrollable {
