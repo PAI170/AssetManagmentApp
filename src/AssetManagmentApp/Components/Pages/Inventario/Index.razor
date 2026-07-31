@@ -117,6 +117,14 @@ else
                                         <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
                                     </div>
                                 }
+                                else if (filaAccionId == activo.Id && filaAccionTipo == "retornar")
+                                {
+                                    <div class="d-flex gap-1 align-items-center">
+                                        <input type="date" class="form-control form-control-sm" @bind="accionFechaTraslado" max="@fechaMaxima" />
+                                        <button class="btn btn-sm btn-success" @onclick="() => ConfirmarRetornarAsync(activo)">Confirmar</button>
+                                        <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
+                                    </div>
+                                }
                                 else if (filaAccionId == activo.Id && filaAccionTipo == "estado")
                                 {
                                     <div class="d-flex gap-1 align-items-center">
@@ -140,7 +148,7 @@ else
                                         }
                                         @if (activo.ProyectoActualId is not null)
                                         {
-                                            <button class="btn btn-sm btn-outline-warning" @onclick="() => ConfirmarRetornarAsync(activo)">Retornar a bodega</button>
+                                            <button class="btn btn-sm btn-outline-warning" @onclick="() => AbrirRetornar(activo)">Retornar a bodega</button>
                                         }
                                         <button class="btn btn-sm btn-outline-secondary" @onclick="() => AbrirCambiarEstado(activo)">Cambiar estado</button>
                                     </div>
@@ -229,6 +237,14 @@ else
         filaAccionId = activo.Id;
         filaAccionTipo = "asignar";
         accionProyectoId = 0;
+        accionFechaTraslado = DateOnly.FromDateTime(DateTime.Now);
+        errorMessage = null;
+    }
+
+    private void AbrirRetornar(Activo activo)
+    {
+        filaAccionId = activo.Id;
+        filaAccionTipo = "retornar";
         accionFechaTraslado = DateOnly.FromDateTime(DateTime.Now);
         errorMessage = null;
     }
@@ -324,22 +340,35 @@ else
         if (activo is null || activo.ProyectoActualId is null)
         {
             errorMessage = "El activo no está asignado a ningún proyecto actualmente.";
+            filaAccionId = null;
             await CargarActivosAsync();
+            return;
+        }
+
+        var hoy = DateOnly.FromDateTime(DateTime.Now);
+        if (accionFechaTraslado > hoy)
+        {
+            errorMessage = "La fecha de retorno no puede ser futura.";
             return;
         }
 
         var proyectoAnteriorId = activo.ProyectoActualId;
         var estadoAnterior = activo.Estado;
-        var hoy = DateOnly.FromDateTime(DateTime.Now);
 
         var asignacionAbierta = await Db.AsignacionesActivoProyecto
             .Where(a => a.ActivoId == activo.Id && a.FechaSalida == null)
             .OrderByDescending(a => a.FechaIngreso)
             .FirstOrDefaultAsync();
 
+        if (asignacionAbierta is not null && accionFechaTraslado < asignacionAbierta.FechaIngreso)
+        {
+            errorMessage = "La fecha de retorno no puede ser anterior a la fecha de ingreso al proyecto.";
+            return;
+        }
+
         if (asignacionAbierta is not null)
         {
-            asignacionAbierta.FechaSalida = hoy;
+            asignacionAbierta.FechaSalida = accionFechaTraslado;
         }
 
         var usuarioId = await ObtenerUsuarioActualIdAsync();
@@ -351,7 +380,7 @@ else
             TipoMovimiento = TipoMovimiento.RetornoABodega,
             EstadoAnterior = estadoAnterior,
             EstadoNuevo = EstadoActivo.Disponible,
-            FechaMovimiento = DateTime.Now,
+            FechaMovimiento = accionFechaTraslado.ToDateTime(TimeOnly.FromDateTime(DateTime.Now)),
             UsuarioId = usuarioId
         });
 
@@ -359,6 +388,8 @@ else
         activo.ProyectoActualId = null;
 
         await Db.SaveChangesAsync();
+
+        filaAccionId = null;
         await CargarActivosAsync();
     }
 
