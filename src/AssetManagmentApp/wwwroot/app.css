@@ -110,6 +110,10 @@ a, .btn-link {
     padding: 1.25rem 1.5rem;
 }
 
+.page-card .table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: transparent;
+}
+
 h1:focus {
     outline: none;
 }

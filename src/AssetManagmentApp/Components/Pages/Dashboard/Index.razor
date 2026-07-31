@@ -79,29 +79,31 @@
         }
         else
         {
-            <table class="table table-sm table-striped">
-                <thead>
-                    <tr>
-                        <th>Proyecto</th>
-                        <th class="text-end">Total gastado</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var fila in totalesPorProyecto)
-                    {
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead>
                         <tr>
-                            <td>@fila.ProyectoNombre</td>
-                            <td class="text-end">₡@fila.Total.ToString("N2")</td>
+                            <th>Proyecto</th>
+                            <th class="text-end">Total gastado</th>
                         </tr>
-                    }
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <th>Total</th>
-                        <th class="text-end">₡@totalesPorProyecto.Sum(f => f.Total).ToString("N2")</th>
-                    </tr>
-                </tfoot>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var fila in totalesPorProyecto)
+                        {
+                            <tr>
+                                <td>@fila.ProyectoNombre</td>
+                                <td class="text-end">₡@fila.Total.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th>Total</th>
+                            <th class="text-end">₡@totalesPorProyecto.Sum(f => f.Total).ToString("N2")</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
         }
     </div>
 
