@@ -81,7 +81,8 @@ else
                 <tr>
                     <th>Fecha</th>
                     <th>Activo</th>
-                    <th>Tipo</th>
+                    <th>Tipo de equipo</th>
+                    <th>Movimiento</th>
                     <th>Estado anterior</th>
                     <th>Estado nuevo</th>
                     <th>Usuario</th>
@@ -94,7 +95,8 @@ else
                     <tr>
                         <td>@mov.FechaMovimiento.ToString("dd/MM/yyyy HH:mm")</td>
                         <td>@mov.Activo.Placa</td>
-                        <td>@mov.TipoMovimiento</td>
+                        <td>@mov.Activo.TipoEquipo.Nombre</td>
+                        <td>@EtiquetaTipoMovimiento(mov.TipoMovimiento)</td>
                         <td>@mov.EstadoAnterior</td>
                         <td>@mov.EstadoNuevo</td>
                         <td>@mov.Usuario.Nombre</td>
@@ -271,7 +273,7 @@ else
 
         movimientos = await Db.Movimientos
             .AsNoTracking()
-            .Include(m => m.Activo)
+            .Include(m => m.Activo).ThenInclude(a => a.TipoEquipo)
             .Include(m => m.Usuario)
             .Where(m => m.ProyectoId == Id)
             .OrderByDescending(m => m.FechaMovimiento)
@@ -345,4 +347,12 @@ else
         await ProformaService.AnularAsync(proforma.Id);
         await CargarAsync();
     }
+
+    private static string EtiquetaTipoMovimiento(TipoMovimiento tipo) => tipo switch
+    {
+        TipoMovimiento.Asignacion => "Asignación",
+        TipoMovimiento.RetornoABodega => "Retorno a bodega",
+        TipoMovimiento.CambioDeEstado => "Cambio de estado",
+        _ => tipo.ToString()
+    };
 }

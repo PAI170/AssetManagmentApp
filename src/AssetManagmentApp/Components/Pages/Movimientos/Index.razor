@@ -94,8 +94,9 @@ else
             <tr>
                 <th>Fecha</th>
                 <th>Activo</th>
+                <th>Tipo de equipo</th>
                 <th>Proyecto</th>
-                <th>Tipo</th>
+                <th>Movimiento</th>
                 <th>Estado anterior</th>
                 <th>Estado nuevo</th>
                 <th>Usuario</th>
@@ -108,6 +109,7 @@ else
                 <tr>
                     <td>@mov.FechaMovimiento.ToString("dd/MM/yyyy HH:mm")</td>
                     <td>@mov.Activo.Placa</td>
+                    <td>@mov.Activo.TipoEquipo.Nombre</td>
                     <td>@(mov.Proyecto?.Nombre ?? "Bodega")</td>
                     <td>@EtiquetaTipoMovimiento(mov.TipoMovimiento)</td>
                     <td>@mov.EstadoAnterior</td>
@@ -148,7 +150,7 @@ else
     {
         var query = Db.Movimientos
             .AsNoTracking()
-            .Include(m => m.Activo)
+            .Include(m => m.Activo).ThenInclude(a => a.TipoEquipo)
             .Include(m => m.Proyecto)
             .Include(m => m.Usuario)
             .AsQueryable();
