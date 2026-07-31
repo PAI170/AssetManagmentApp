@@ -18,3 +18,9 @@
         display: none;
     }
 }
+
+@media (min-width: 641px) {
+    .btn-toggle-sidebar {
+        margin-left: -1.5rem;
+    }
+}

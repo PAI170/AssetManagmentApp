@@ -28,6 +28,12 @@
     font-size: 1.1rem;
 }
 
+.navbar-brand-logo img {
+    height: 2rem;
+    width: auto;
+    display: block;
+}
+
 .nav-item ::deep .bi {
     display: inline-block;
     width: 1.5rem;
