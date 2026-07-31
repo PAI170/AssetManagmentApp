@@ -1,0 +1,175 @@
+@page "/inventario/editar"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@using AssetManagmentApp.Data
+@using AssetManagmentApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+
+<PageTitle>Editar Activo</PageTitle>
+
+<h1>Editar Activo</h1>
+
+@if (errorMessage is not null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+@if (mensaje is not null)
+{
+    <div class="alert alert-success">@mensaje</div>
+}
+
+<div class="row g-2 mb-3 align-items-end">
+    <div class="col-auto">
+        <label class="form-label">Buscar por placa</label>
+        <input class="form-control" placeholder="Placa..." @bind="filtroPlaca" @bind:event="oninput" />
+    </div>
+</div>
+
+@if (activos is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else
+{
+    var activosFiltrados = string.IsNullOrWhiteSpace(filtroPlaca)
+        ? activos
+        : activos.Where(a => a.Placa.Contains(filtroPlaca, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    if (activosFiltrados.Count == 0)
+    {
+        <p><em>No hay activos que coincidan.</em></p>
+    }
+    else
+    {
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Placa</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var activo in activosFiltrados)
+                {
+                    <tr>
+                        @if (editandoId == activo.Id)
+                        {
+                            <td><InputText class="form-control" @bind-Value="edicion.Placa" /></td>
+                            <td>
+                                <InputSelect class="form-select" @bind-Value="edicion.TipoEquipoId">
+                                    @if (tiposEquipo is not null)
+                                    {
+                                        @foreach (var tipo in tiposEquipo)
+                                        {
+                                            <option value="@tipo.Id">@tipo.Nombre</option>
+                                        }
+                                    }
+                                </InputSelect>
+                            </td>
+                            <td>@activo.Estado</td>
+                            <td>
+                                <button class="btn btn-sm btn-success" @onclick="() => GuardarAsync(activo)">Guardar</button>
+                                <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+                            </td>
+                        }
+                        else
+                        {
+                            <td>@activo.Placa</td>
+                            <td>@activo.TipoEquipo.Nombre</td>
+                            <td>@activo.Estado</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" @onclick="() => IniciarEdicion(activo)">Editar</button>
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private List<Activo>? activos;
+    private List<TipoEquipo>? tiposEquipo;
+    private string filtroPlaca = "";
+
+    private int? editandoId;
+    private EdicionModel edicion = new();
+    private string? errorMessage;
+    private string? mensaje;
+
+    protected override async Task OnInitializedAsync()
+    {
+        tiposEquipo = await Db.TiposEquipo.AsNoTracking().OrderBy(t => t.Nombre).ToListAsync();
+        await CargarAsync();
+    }
+
+    private async Task CargarAsync()
+    {
+        activos = await Db.Activos
+            .AsNoTracking()
+            .Include(a => a.TipoEquipo)
+            .OrderBy(a => a.Placa)
+            .ToListAsync();
+    }
+
+    private void IniciarEdicion(Activo activo)
+    {
+        editandoId = activo.Id;
+        edicion = new EdicionModel { Placa = activo.Placa, TipoEquipoId = activo.TipoEquipoId };
+        errorMessage = null;
+        mensaje = null;
+    }
+
+    private void CancelarEdicion()
+    {
+        editandoId = null;
+    }
+
+    private async Task GuardarAsync(Activo activoOriginal)
+    {
+        errorMessage = null;
+        mensaje = null;
+
+        var placa = edicion.Placa.Trim();
+        if (string.IsNullOrWhiteSpace(placa))
+        {
+            errorMessage = "La placa es obligatoria.";
+            return;
+        }
+
+        var placaEnUso = await Db.Activos.AnyAsync(a => a.Placa == placa && a.Id != activoOriginal.Id);
+        if (placaEnUso)
+        {
+            errorMessage = $"Ya existe otro activo con la placa '{placa}'.";
+            return;
+        }
+
+        var activo = await Db.Activos.FirstOrDefaultAsync(a => a.Id == activoOriginal.Id);
+        if (activo is null)
+        {
+            errorMessage = "El activo ya no existe.";
+            editandoId = null;
+            await CargarAsync();
+            return;
+        }
+
+        activo.Placa = placa;
+        activo.TipoEquipoId = edicion.TipoEquipoId;
+
+        await Db.SaveChangesAsync();
+
+        editandoId = null;
+        mensaje = $"Activo '{placa}' actualizado.";
+        await CargarAsync();
+    }
+
+    private class EdicionModel
+    {
+        public string Placa { get; set; } = string.Empty;
+        public int TipoEquipoId { get; set; }
+    }
+}

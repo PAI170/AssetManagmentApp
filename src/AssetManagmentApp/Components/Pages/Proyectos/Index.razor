@@ -16,36 +16,6 @@
     <div class="alert alert-danger">@errorMessage</div>
 }
 
-<AuthorizeView Roles="Admin">
-    <Authorized>
-        <button class="btn btn-primary mb-3" @onclick="MostrarFormularioCreacion">+ Nuevo proyecto</button>
-    </Authorized>
-</AuthorizeView>
-
-@if (mostrandoCreacion)
-{
-    <EditForm Model="nuevoProyecto" OnValidSubmit="CrearProyectoAsync" class="card card-body mb-3">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
-        <div class="mb-2">
-            <label class="form-label">Nombre</label>
-            <InputText class="form-control" @bind-Value="nuevoProyecto.Nombre" />
-        </div>
-        <div class="mb-2">
-            <label class="form-label">Dirección</label>
-            <InputText class="form-control" @bind-Value="nuevoProyecto.Direccion" />
-        </div>
-        <div class="mb-2">
-            <label class="form-label">Ingeniero a cargo</label>
-            <InputText class="form-control" @bind-Value="nuevoProyecto.IngenieroACargo" />
-        </div>
-        <div>
-            <button type="submit" class="btn btn-success">Guardar</button>
-            <button type="button" class="btn btn-secondary" @onclick="CancelarCreacion">Cancelar</button>
-        </div>
-    </EditForm>
-}
-
 @if (proyectos is null)
 {
     <p><em>Cargando...</em></p>
@@ -108,8 +78,6 @@ else
 
 @code {
     private List<Proyecto>? proyectos;
-    private bool mostrandoCreacion;
-    private ProyectoFormModel nuevoProyecto = new();
     private int? editandoId;
     private ProyectoFormModel edicion = new();
     private string? errorMessage;
@@ -122,38 +90,6 @@ else
     private async Task CargarAsync()
     {
         proyectos = await Db.Proyectos.AsNoTracking().OrderBy(p => p.Nombre).ToListAsync();
-    }
-
-    private void MostrarFormularioCreacion()
-    {
-        nuevoProyecto = new ProyectoFormModel();
-        errorMessage = null;
-        mostrandoCreacion = true;
-    }
-
-    private void CancelarCreacion()
-    {
-        mostrandoCreacion = false;
-    }
-
-    private async Task CrearProyectoAsync()
-    {
-        errorMessage = null;
-
-        var proyecto = new Proyecto
-        {
-            Nombre = nuevoProyecto.Nombre.Trim(),
-            Direccion = nuevoProyecto.Direccion.Trim(),
-            IngenieroACargo = nuevoProyecto.IngenieroACargo.Trim(),
-            Estado = EstadoProyecto.Activo,
-            FechaCreacion = DateOnly.FromDateTime(DateTime.Now)
-        };
-
-        Db.Proyectos.Add(proyecto);
-        await Db.SaveChangesAsync();
-
-        mostrandoCreacion = false;
-        await CargarAsync();
     }
 
     private void IniciarEdicion(Proyecto proyecto)

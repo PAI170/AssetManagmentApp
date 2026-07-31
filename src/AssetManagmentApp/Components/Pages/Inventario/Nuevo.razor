@@ -1,0 +1,109 @@
+@page "/inventario/nuevo"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@using AssetManagmentApp.Data
+@using AssetManagmentApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+@inject NavigationManager NavigationManager
+
+<PageTitle>Nuevo Activo</PageTitle>
+
+<h1>Nuevo Activo</h1>
+
+@if (errorMessage is not null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+<EditForm Model="nuevoActivo" OnValidSubmit="CrearActivoAsync" class="card card-body" style="max-width: 480px;">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div class="mb-2">
+        <label class="form-label">Placa</label>
+        <InputText class="form-control" @bind-Value="nuevoActivo.Placa" />
+    </div>
+    <div class="mb-2">
+        <label class="form-label">Tipo de equipo</label>
+        <InputSelect class="form-select" @bind-Value="nuevoActivo.TipoEquipoId">
+            <option value="0">-- Seleccionar --</option>
+            @if (tiposEquipo is not null)
+            {
+                @foreach (var tipo in tiposEquipo)
+                {
+                    <option value="@tipo.Id">@tipo.Nombre</option>
+                }
+            }
+        </InputSelect>
+    </div>
+    <div>
+        <button type="submit" class="btn btn-success">Guardar</button>
+        <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+    </div>
+</EditForm>
+
+@code {
+    private List<TipoEquipo>? tiposEquipo;
+    private ActivoFormModel nuevoActivo = new();
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        tiposEquipo = await Db.TiposEquipo.AsNoTracking().OrderBy(t => t.Nombre).ToListAsync();
+    }
+
+    private void Cancelar()
+    {
+        NavigationManager.NavigateTo("/inventario");
+    }
+
+    private async Task CrearActivoAsync()
+    {
+        errorMessage = null;
+        var placa = nuevoActivo.Placa.Trim();
+
+        if (nuevoActivo.TipoEquipoId <= 0)
+        {
+            errorMessage = "Seleccioná un tipo de equipo.";
+            return;
+        }
+
+        var yaExiste = await Db.Activos.AnyAsync(a => a.Placa == placa);
+        if (yaExiste)
+        {
+            errorMessage = $"Ya existe un activo con la placa '{placa}'.";
+            return;
+        }
+
+        var activo = new Activo
+        {
+            Placa = placa,
+            TipoEquipoId = nuevoActivo.TipoEquipoId,
+            Estado = EstadoActivo.Disponible,
+            ProyectoActualId = null,
+            FechaRegistro = DateOnly.FromDateTime(DateTime.Now)
+        };
+
+        Db.Activos.Add(activo);
+
+        try
+        {
+            await Db.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            errorMessage = $"Ya existe un activo con la placa '{placa}'.";
+            return;
+        }
+
+        NavigationManager.NavigateTo("/inventario");
+    }
+
+    private class ActivoFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "La placa es obligatoria")]
+        public string Placa { get; set; } = string.Empty;
+
+        public int TipoEquipoId { get; set; }
+    }
+}

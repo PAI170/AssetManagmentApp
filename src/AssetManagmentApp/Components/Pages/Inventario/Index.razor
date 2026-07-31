@@ -61,41 +61,6 @@
     </div>
 </div>
 
-<AuthorizeView Roles="Admin">
-    <Authorized>
-        <button class="btn btn-success mb-3" @onclick="MostrarFormularioCreacion">+ Nuevo activo</button>
-    </Authorized>
-</AuthorizeView>
-
-@if (mostrandoCreacion)
-{
-    <EditForm Model="nuevoActivo" OnValidSubmit="CrearActivoAsync" class="card card-body mb-3">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
-        <div class="mb-2">
-            <label class="form-label">Placa</label>
-            <InputText class="form-control" @bind-Value="nuevoActivo.Placa" />
-        </div>
-        <div class="mb-2">
-            <label class="form-label">Tipo de equipo</label>
-            <InputSelect class="form-select" @bind-Value="nuevoActivo.TipoEquipoId">
-                <option value="0">-- Seleccionar --</option>
-                @if (tiposEquipo is not null)
-                {
-                    @foreach (var tipo in tiposEquipo)
-                    {
-                        <option value="@tipo.Id">@tipo.Nombre</option>
-                    }
-                }
-            </InputSelect>
-        </div>
-        <div>
-            <button type="submit" class="btn btn-success">Guardar</button>
-            <button type="button" class="btn btn-secondary" @onclick="CancelarCreacion">Cancelar</button>
-        </div>
-    </EditForm>
-}
-
 @if (activos is null)
 {
     <p><em>Cargando...</em></p>
@@ -192,8 +157,6 @@ else
     private string filtroTipoEquipoId = "";
     private string filtroProyectoId = "";
 
-    private bool mostrandoCreacion;
-    private ActivoFormModel nuevoActivo = new();
     private string? errorMessage;
 
     private int? filaAccionId;
@@ -247,61 +210,6 @@ else
         filtroEstado = "";
         filtroTipoEquipoId = "";
         filtroProyectoId = "";
-        await CargarActivosAsync();
-    }
-
-    private void MostrarFormularioCreacion()
-    {
-        nuevoActivo = new ActivoFormModel();
-        errorMessage = null;
-        mostrandoCreacion = true;
-    }
-
-    private void CancelarCreacion()
-    {
-        mostrandoCreacion = false;
-    }
-
-    private async Task CrearActivoAsync()
-    {
-        errorMessage = null;
-        var placa = nuevoActivo.Placa.Trim();
-
-        if (nuevoActivo.TipoEquipoId <= 0)
-        {
-            errorMessage = "Seleccioná un tipo de equipo.";
-            return;
-        }
-
-        var yaExiste = await Db.Activos.AnyAsync(a => a.Placa == placa);
-        if (yaExiste)
-        {
-            errorMessage = $"Ya existe un activo con la placa '{placa}'.";
-            return;
-        }
-
-        var activo = new Activo
-        {
-            Placa = placa,
-            TipoEquipoId = nuevoActivo.TipoEquipoId,
-            Estado = EstadoActivo.Disponible,
-            ProyectoActualId = null,
-            FechaRegistro = DateOnly.FromDateTime(DateTime.Now)
-        };
-
-        Db.Activos.Add(activo);
-
-        try
-        {
-            await Db.SaveChangesAsync();
-        }
-        catch (DbUpdateException)
-        {
-            errorMessage = $"Ya existe un activo con la placa '{placa}'.";
-            return;
-        }
-
-        mostrandoCreacion = false;
         await CargarActivosAsync();
     }
 
@@ -486,12 +394,4 @@ else
         EstadoActivo.Danado => "Dañado",
         _ => estado.ToString()
     };
-
-    private class ActivoFormModel
-    {
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "La placa es obligatoria")]
-        public string Placa { get; set; } = string.Empty;
-
-        public int TipoEquipoId { get; set; }
-    }
 }

@@ -1,0 +1,70 @@
+@page "/proyectos/nuevo"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@using AssetManagmentApp.Data
+@using AssetManagmentApp.Models
+@inject AppDbContext Db
+@inject NavigationManager NavigationManager
+
+<PageTitle>Nuevo Proyecto</PageTitle>
+
+<h1>Nuevo Proyecto</h1>
+
+<EditForm Model="nuevoProyecto" OnValidSubmit="CrearProyectoAsync" class="card card-body" style="max-width: 480px;">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div class="mb-2">
+        <label class="form-label">Nombre</label>
+        <InputText class="form-control" @bind-Value="nuevoProyecto.Nombre" />
+    </div>
+    <div class="mb-2">
+        <label class="form-label">Dirección</label>
+        <InputText class="form-control" @bind-Value="nuevoProyecto.Direccion" />
+    </div>
+    <div class="mb-2">
+        <label class="form-label">Ingeniero a cargo</label>
+        <InputText class="form-control" @bind-Value="nuevoProyecto.IngenieroACargo" />
+    </div>
+    <div>
+        <button type="submit" class="btn btn-success">Guardar</button>
+        <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+    </div>
+</EditForm>
+
+@code {
+    private ProyectoFormModel nuevoProyecto = new();
+
+    private void Cancelar()
+    {
+        NavigationManager.NavigateTo("/proyectos");
+    }
+
+    private async Task CrearProyectoAsync()
+    {
+        var proyecto = new Proyecto
+        {
+            Nombre = nuevoProyecto.Nombre.Trim(),
+            Direccion = nuevoProyecto.Direccion.Trim(),
+            IngenieroACargo = nuevoProyecto.IngenieroACargo.Trim(),
+            Estado = EstadoProyecto.Activo,
+            FechaCreacion = DateOnly.FromDateTime(DateTime.Now)
+        };
+
+        Db.Proyectos.Add(proyecto);
+        await Db.SaveChangesAsync();
+
+        NavigationManager.NavigateTo("/proyectos");
+    }
+
+    private class ProyectoFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "El nombre es obligatorio")]
+        public string Nombre { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "La dirección es obligatoria")]
+        public string Direccion { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "El ingeniero a cargo es obligatorio")]
+        public string IngenieroACargo { get; set; } = string.Empty;
+    }
+}

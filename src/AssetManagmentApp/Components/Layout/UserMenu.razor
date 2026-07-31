@@ -1,0 +1,46 @@
+@rendermode InteractiveServer
+@using AssetManagmentApp.Services
+
+<AuthorizeView>
+    <Authorized>
+        <div class="user-menu-bar">
+            <i class="bi bi-bell fs-5 user-menu-icon" aria-hidden="true"></i>
+
+            <div class="user-menu-profile">
+                <button type="button" class="user-menu-circle" @onclick="AlternarMenu">@Inicial(context)</button>
+
+                @if (mostrarMenu)
+                {
+                    <div class="user-menu-dropdown">
+                        <div class="user-menu-name">@Nombre(context)</div>
+                        <div class="user-menu-email">@context.User.Identity?.Name</div>
+                        <hr />
+                        <form method="post" action="/Account/Logout">
+                            <button type="submit" class="user-menu-logout">
+                                <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Cerrar sesión
+                            </button>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private bool mostrarMenu;
+
+    private static string Nombre(Microsoft.AspNetCore.Components.Authorization.AuthenticationState context)
+    {
+        var nombre = context.User.FindFirst(ApplicationUserClaimsPrincipalFactory.NombreClaimType)?.Value;
+        return string.IsNullOrWhiteSpace(nombre) ? (context.User.Identity?.Name ?? "Usuario") : nombre;
+    }
+
+    private static string Inicial(Microsoft.AspNetCore.Components.Authorization.AuthenticationState context)
+    {
+        var nombre = Nombre(context);
+        return nombre.Length == 0 ? "?" : nombre.Trim()[0].ToString().ToUpperInvariant();
+    }
+
+    private void AlternarMenu() => mostrarMenu = !mostrarMenu;
+}

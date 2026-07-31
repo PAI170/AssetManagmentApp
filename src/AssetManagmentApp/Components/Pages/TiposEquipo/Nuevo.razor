@@ -1,0 +1,76 @@
+@page "/tipos-equipo/nuevo"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@using AssetManagmentApp.Data
+@using AssetManagmentApp.Models
+@inject AppDbContext Db
+@inject NavigationManager NavigationManager
+
+<PageTitle>Nuevo Tipo de Equipo</PageTitle>
+
+<h1>Nuevo Tipo de Equipo</h1>
+
+<EditForm Model="nuevoTipo" OnValidSubmit="CrearTipoAsync" class="card card-body" style="max-width: 480px;">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div class="mb-2">
+        <label class="form-label">Nombre</label>
+        <InputText class="form-control" @bind-Value="nuevoTipo.Nombre" />
+    </div>
+    <div class="mb-2">
+        <label class="form-label">Precio por día (₡)</label>
+        <InputNumber class="form-control" @bind-Value="nuevoTipo.PrecioPorDia" />
+    </div>
+    <div class="mb-2">
+        <label class="form-label">Descripción (opcional)</label>
+        <InputText class="form-control" @bind-Value="nuevoTipo.Descripcion" />
+    </div>
+    <div>
+        <button type="submit" class="btn btn-success">Guardar</button>
+        <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+    </div>
+</EditForm>
+
+@code {
+    private TipoEquipoFormModel nuevoTipo = new();
+
+    private void Cancelar()
+    {
+        NavigationManager.NavigateTo("/tipos-equipo");
+    }
+
+    private async Task CrearTipoAsync()
+    {
+        var hoy = DateOnly.FromDateTime(DateTime.Now);
+
+        var tipo = new TipoEquipo
+        {
+            Nombre = nuevoTipo.Nombre.Trim(),
+            PrecioPorDia = nuevoTipo.PrecioPorDia,
+            Descripcion = string.IsNullOrWhiteSpace(nuevoTipo.Descripcion) ? null : nuevoTipo.Descripcion.Trim()
+        };
+
+        tipo.HistorialPrecios.Add(new HistorialPrecioTipoEquipo
+        {
+            Precio = tipo.PrecioPorDia,
+            VigenteDesde = hoy,
+            VigenteHasta = null
+        });
+
+        Db.TiposEquipo.Add(tipo);
+        await Db.SaveChangesAsync();
+
+        NavigationManager.NavigateTo("/tipos-equipo");
+    }
+
+    private class TipoEquipoFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "El nombre es obligatorio")]
+        public string Nombre { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Range(0.01, double.MaxValue, ErrorMessage = "El precio debe ser mayor a 0")]
+        public decimal PrecioPorDia { get; set; }
+
+        public string? Descripcion { get; set; }
+    }
+}

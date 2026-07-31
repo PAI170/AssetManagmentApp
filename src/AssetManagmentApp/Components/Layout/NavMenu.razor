@@ -1,3 +1,6 @@
+@implements IDisposable
+@inject NavigationManager Navigation
+
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">Control de Equipos</a>
@@ -15,15 +18,32 @@
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="proyectos">
+            <div class="nav-link nav-group-toggle" role="button" @onclick='() => AlternarGrupo("proyectos")'>
                 <i class="bi bi-diagram-3" aria-hidden="true"></i> Proyectos
-            </NavLink>
+                <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("proyectos") ? "rotated" : "")" aria-hidden="true"></i>
+            </div>
+            @if (EstaExpandido("proyectos"))
+            {
+                <div class="nav-submenu">
+                    <NavLink class="nav-sublink" href="proyectos" Match="NavLinkMatch.All">Todos los Proyectos</NavLink>
+                    <NavLink class="nav-sublink" href="proyectos/nuevo">Nuevo Proyecto</NavLink>
+                </div>
+            }
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="inventario">
+            <div class="nav-link nav-group-toggle" role="button" @onclick='() => AlternarGrupo("inventario")'>
                 <i class="bi bi-box-seam" aria-hidden="true"></i> Inventario
-            </NavLink>
+                <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("inventario") ? "rotated" : "")" aria-hidden="true"></i>
+            </div>
+            @if (EstaExpandido("inventario"))
+            {
+                <div class="nav-submenu">
+                    <NavLink class="nav-sublink" href="inventario" Match="NavLinkMatch.All">Todo el Inventario</NavLink>
+                    <NavLink class="nav-sublink" href="inventario/nuevo">Nuevo Activo</NavLink>
+                    <NavLink class="nav-sublink" href="inventario/editar">Editar Activo</NavLink>
+                </div>
+            }
         </div>
 
         <div class="nav-item px-3">
@@ -33,19 +53,80 @@
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="tipos-equipo">
+            <div class="nav-link nav-group-toggle" role="button" @onclick='() => AlternarGrupo("tipos-equipo")'>
                 <i class="bi bi-tags" aria-hidden="true"></i> Tipo de Equipo
-            </NavLink>
+                <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("tipos-equipo") ? "rotated" : "")" aria-hidden="true"></i>
+            </div>
+            @if (EstaExpandido("tipos-equipo"))
+            {
+                <div class="nav-submenu">
+                    <NavLink class="nav-sublink" href="tipos-equipo" Match="NavLinkMatch.All">Todos los Tipos</NavLink>
+                    <NavLink class="nav-sublink" href="tipos-equipo/nuevo">Nuevo Tipo</NavLink>
+                </div>
+            }
         </div>
 
         <AuthorizeView Roles="Admin">
             <Authorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="usuarios">
+                    <div class="nav-link nav-group-toggle" role="button" @onclick='() => AlternarGrupo("usuarios")'>
                         <i class="bi bi-people" aria-hidden="true"></i> Usuarios
-                    </NavLink>
+                        <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("usuarios") ? "rotated" : "")" aria-hidden="true"></i>
+                    </div>
+                    @if (EstaExpandido("usuarios"))
+                    {
+                        <div class="nav-submenu">
+                            <NavLink class="nav-sublink" href="usuarios" Match="NavLinkMatch.All">Todos los Usuarios</NavLink>
+                            <NavLink class="nav-sublink" href="usuarios/nuevo">Nuevo Usuario</NavLink>
+                        </div>
+                    }
                 </div>
             </Authorized>
         </AuthorizeView>
     </nav>
 </div>
+
+@code {
+    private readonly HashSet<string> gruposExpandidos = new();
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        ExpandirGrupoActivo();
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        ExpandirGrupoActivo();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ExpandirGrupoActivo()
+    {
+        var path = new Uri(Navigation.Uri).AbsolutePath.Trim('/');
+
+        if (path.StartsWith("proyectos", StringComparison.OrdinalIgnoreCase))
+            gruposExpandidos.Add("proyectos");
+        else if (path.StartsWith("inventario", StringComparison.OrdinalIgnoreCase))
+            gruposExpandidos.Add("inventario");
+        else if (path.StartsWith("tipos-equipo", StringComparison.OrdinalIgnoreCase))
+            gruposExpandidos.Add("tipos-equipo");
+        else if (path.StartsWith("usuarios", StringComparison.OrdinalIgnoreCase))
+            gruposExpandidos.Add("usuarios");
+    }
+
+    private void AlternarGrupo(string grupo)
+    {
+        if (!gruposExpandidos.Add(grupo))
+        {
+            gruposExpandidos.Remove(grupo);
+        }
+    }
+
+    private bool EstaExpandido(string grupo) => gruposExpandidos.Contains(grupo);
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

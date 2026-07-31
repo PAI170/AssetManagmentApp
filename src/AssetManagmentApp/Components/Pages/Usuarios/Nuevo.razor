@@ -1,0 +1,98 @@
+@page "/usuarios/nuevo"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@using System.ComponentModel.DataAnnotations
+@using AssetManagmentApp.Models
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager NavigationManager
+
+<PageTitle>Nuevo Usuario</PageTitle>
+
+<h1>Nuevo Usuario</h1>
+
+@if (errorMessage is not null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+<EditForm Model="nuevoUsuario" OnValidSubmit="CrearUsuarioAsync" class="card card-body" style="max-width: 480px;">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div class="mb-2">
+        <label class="form-label">Nombre</label>
+        <InputText class="form-control" @bind-Value="nuevoUsuario.Nombre" />
+    </div>
+    <div class="mb-2">
+        <label class="form-label">Correo</label>
+        <InputText class="form-control" @bind-Value="nuevoUsuario.Correo" />
+    </div>
+    <div class="mb-2">
+        <label class="form-label">Rol</label>
+        <InputSelect class="form-select" @bind-Value="nuevoUsuario.Rol">
+            <option value="Admin">Admin</option>
+            <option value="Consultor">Consultor</option>
+        </InputSelect>
+    </div>
+    <div class="mb-2">
+        <label class="form-label">Contraseña</label>
+        <InputText type="password" class="form-control" @bind-Value="nuevoUsuario.Password" />
+    </div>
+    <div>
+        <button type="submit" class="btn btn-success">Guardar</button>
+        <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+    </div>
+</EditForm>
+
+@code {
+    private NuevoUsuarioModel nuevoUsuario = new();
+    private string? errorMessage;
+
+    private void Cancelar()
+    {
+        NavigationManager.NavigateTo("/usuarios");
+    }
+
+    private async Task CrearUsuarioAsync()
+    {
+        errorMessage = null;
+
+        var usuario = new ApplicationUser
+        {
+            UserName = nuevoUsuario.Correo.Trim(),
+            Email = nuevoUsuario.Correo.Trim(),
+            Nombre = nuevoUsuario.Nombre.Trim(),
+            Activo = true,
+            EmailConfirmed = true,
+            LockoutEnabled = true
+        };
+
+        var result = await UserManager.CreateAsync(usuario, nuevoUsuario.Password);
+        if (!result.Succeeded)
+        {
+            errorMessage = string.Join(" ", result.Errors.Select(e => e.Description));
+            return;
+        }
+
+        await UserManager.AddToRoleAsync(usuario, nuevoUsuario.Rol);
+
+        NavigationManager.NavigateTo("/usuarios");
+    }
+
+    private class NuevoUsuarioModel
+    {
+        [Required(ErrorMessage = "El nombre es obligatorio")]
+        public string Nombre { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El correo es obligatorio")]
+        [EmailAddress]
+        public string Correo { get; set; } = string.Empty;
+
+        [Required]
+        public string Rol { get; set; } = "Consultor";
+
+        [Required(ErrorMessage = "La contraseña es obligatoria")]
+        [MinLength(8, ErrorMessage = "Mínimo 8 caracteres")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

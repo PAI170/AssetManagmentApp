@@ -15,36 +15,6 @@
     <div class="alert alert-danger">@errorMessage</div>
 }
 
-<AuthorizeView Roles="Admin">
-    <Authorized>
-        <button class="btn btn-primary mb-3" @onclick="MostrarFormularioCreacion">+ Nuevo tipo de equipo</button>
-    </Authorized>
-</AuthorizeView>
-
-@if (mostrandoCreacion)
-{
-    <EditForm Model="nuevoTipo" OnValidSubmit="CrearTipoAsync" class="card card-body mb-3">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
-        <div class="mb-2">
-            <label class="form-label">Nombre</label>
-            <InputText class="form-control" @bind-Value="nuevoTipo.Nombre" />
-        </div>
-        <div class="mb-2">
-            <label class="form-label">Precio por día (₡)</label>
-            <InputNumber class="form-control" @bind-Value="nuevoTipo.PrecioPorDia" />
-        </div>
-        <div class="mb-2">
-            <label class="form-label">Descripción (opcional)</label>
-            <InputText class="form-control" @bind-Value="nuevoTipo.Descripcion" />
-        </div>
-        <div>
-            <button type="submit" class="btn btn-success">Guardar</button>
-            <button type="button" class="btn btn-secondary" @onclick="CancelarCreacion">Cancelar</button>
-        </div>
-    </EditForm>
-}
-
 @if (tipos is null)
 {
     <p><em>Cargando...</em></p>
@@ -95,8 +65,6 @@ else
 
 @code {
     private List<TipoEquipo>? tipos;
-    private bool mostrandoCreacion;
-    private TipoEquipoFormModel nuevoTipo = new();
     private int? editandoId;
     private TipoEquipoFormModel edicion = new();
     private string? errorMessage;
@@ -109,43 +77,6 @@ else
     private async Task CargarAsync()
     {
         tipos = await Db.TiposEquipo.AsNoTracking().OrderBy(t => t.Nombre).ToListAsync();
-    }
-
-    private void MostrarFormularioCreacion()
-    {
-        nuevoTipo = new TipoEquipoFormModel();
-        mostrandoCreacion = true;
-    }
-
-    private void CancelarCreacion()
-    {
-        mostrandoCreacion = false;
-    }
-
-    private async Task CrearTipoAsync()
-    {
-        errorMessage = null;
-        var hoy = DateOnly.FromDateTime(DateTime.Now);
-
-        var tipo = new TipoEquipo
-        {
-            Nombre = nuevoTipo.Nombre.Trim(),
-            PrecioPorDia = nuevoTipo.PrecioPorDia,
-            Descripcion = string.IsNullOrWhiteSpace(nuevoTipo.Descripcion) ? null : nuevoTipo.Descripcion.Trim()
-        };
-
-        tipo.HistorialPrecios.Add(new HistorialPrecioTipoEquipo
-        {
-            Precio = tipo.PrecioPorDia,
-            VigenteDesde = hoy,
-            VigenteHasta = null
-        });
-
-        Db.TiposEquipo.Add(tipo);
-        await Db.SaveChangesAsync();
-
-        mostrandoCreacion = false;
-        await CargarAsync();
     }
 
     private void IniciarEdicion(TipoEquipo tipo)
