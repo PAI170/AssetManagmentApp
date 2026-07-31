@@ -178,42 +178,61 @@ else
                             <Authorized>
                                 @if (filaAccionId == activo.Id && filaAccionTipo == "asignar")
                                 {
-                                    <div class="d-flex gap-1 align-items-center">
-                                        <select class="form-select form-select-sm" @bind="accionProyectoId">
-                                            <option value="0">-- Proyecto --</option>
-                                            @if (proyectos is not null)
-                                            {
-                                                @foreach (var proyecto in proyectos)
+                                    <div class="d-flex flex-column gap-1">
+                                        <div class="d-flex gap-1 align-items-center">
+                                            <select class="form-select form-select-sm" @bind="accionProyectoId">
+                                                <option value="0">-- Proyecto --</option>
+                                                @if (proyectos is not null)
                                                 {
-                                                    <option value="@proyecto.Id">@proyecto.Nombre</option>
+                                                    @foreach (var proyecto in proyectos)
+                                                    {
+                                                        <option value="@proyecto.Id">@proyecto.Nombre</option>
+                                                    }
                                                 }
-                                            }
-                                        </select>
-                                        <input type="date" class="form-control form-control-sm" @bind="accionFechaTraslado" max="@fechaMaxima" />
-                                        <button class="btn btn-sm btn-success" @onclick="() => ConfirmarAsignarAsync(activo)">Confirmar</button>
-                                        <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
+                                            </select>
+                                            <input type="date" class="form-control form-control-sm" @bind="accionFechaTraslado" max="@fechaMaxima" />
+                                        </div>
+                                        <div class="small border rounded px-2 py-1">
+                                            ¿Asignar "@activo.Placa" a "@NombreProyecto(accionProyectoId)" desde el @accionFechaTraslado.ToString("dd/MM/yyyy")?
+                                        </div>
+                                        <div class="d-flex gap-1">
+                                            <button class="btn btn-sm btn-success" @onclick="() => ConfirmarAsignarAsync(activo)">Confirmar</button>
+                                            <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
+                                        </div>
                                     </div>
                                 }
                                 else if (filaAccionId == activo.Id && filaAccionTipo == "retornar")
                                 {
-                                    <div class="d-flex gap-1 align-items-center">
+                                    <div class="d-flex flex-column gap-1">
                                         <input type="date" class="form-control form-control-sm" @bind="accionFechaTraslado" max="@fechaMaxima" />
-                                        <button class="btn btn-sm btn-success" @onclick="() => ConfirmarRetornarAsync(activo)">Confirmar</button>
-                                        <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
+                                        <div class="small border rounded px-2 py-1">
+                                            ¿Retornar "@activo.Placa" a bodega el @accionFechaTraslado.ToString("dd/MM/yyyy")?
+                                        </div>
+                                        <div class="d-flex gap-1">
+                                            <button class="btn btn-sm btn-success" @onclick="() => ConfirmarRetornarAsync(activo)">Confirmar</button>
+                                            <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
+                                        </div>
                                     </div>
                                 }
                                 else if (filaAccionId == activo.Id && filaAccionTipo == "estado")
                                 {
-                                    <div class="d-flex gap-1 align-items-center">
-                                        <select class="form-select form-select-sm" @bind="accionNuevoEstado">
-                                            @foreach (var estado in Enum.GetValues<EstadoActivo>())
-                                            {
-                                                <option value="@estado">@EtiquetaEstado(estado)</option>
-                                            }
-                                        </select>
-                                        <input class="form-control form-control-sm" placeholder="Observación" @bind="accionObservacion" />
-                                        <button class="btn btn-sm btn-success" @onclick="() => ConfirmarCambiarEstadoAsync(activo)">Confirmar</button>
-                                        <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
+                                    <div class="d-flex flex-column gap-1">
+                                        <div class="d-flex gap-1 align-items-center">
+                                            <select class="form-select form-select-sm" @bind="accionNuevoEstado">
+                                                @foreach (var estado in Enum.GetValues<EstadoActivo>())
+                                                {
+                                                    <option value="@estado">@EtiquetaEstado(estado)</option>
+                                                }
+                                            </select>
+                                            <input class="form-control form-control-sm" placeholder="Observación" @bind="accionObservacion" />
+                                        </div>
+                                        <div class="small border rounded px-2 py-1">
+                                            ¿Cambiar estado de "@activo.Placa" a "@EtiquetaEstado(accionNuevoEstado)"?
+                                        </div>
+                                        <div class="d-flex gap-1">
+                                            <button class="btn btn-sm btn-success" @onclick="() => ConfirmarCambiarEstadoAsync(activo)">Confirmar</button>
+                                            <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
+                                        </div>
                                     </div>
                                 }
                                 else if (filaAccionId == activo.Id && filaAccionTipo == "eliminar")
@@ -404,6 +423,9 @@ else
         accionObservacion = "";
         errorMessage = null;
     }
+
+    private string NombreProyecto(int proyectoId) =>
+        proyectos?.FirstOrDefault(p => p.Id == proyectoId)?.Nombre ?? "-- sin elegir --";
 
     private void AbrirEliminar(Activo activo)
     {
