@@ -26,6 +26,10 @@
     <div class="mb-2">
         <label class="form-label">Placa</label>
         <InputText class="form-control" @bind-Value="nuevoActivo.Placa" />
+        @if (nuevoActivo.Cantidad > 1)
+        {
+            <div class="form-text">Se usará como prefijo: se generarán @nuevoActivo.Cantidad placas automáticas (ej. @(string.IsNullOrWhiteSpace(nuevoActivo.Placa) ? "PREFIJO" : nuevoActivo.Placa.Trim())-001, -002...).</div>
+        }
     </div>
     <div class="mb-2">
         <label class="form-label">Tipo de equipo</label>
@@ -39,6 +43,11 @@
                 }
             }
         </InputSelect>
+    </div>
+    <div class="mb-2">
+        <label class="form-label">Cantidad</label>
+        <InputNumber class="form-control" @bind-Value="nuevoActivo.Cantidad" min="1" />
+        <div class="form-text">Para equipos sin placa física individual (ej. andamios): poné una cantidad mayor a 1 y en Placa un prefijo (ej. "ANDAMIO"). Se crea un activo por unidad, cada uno con su propia placa autogenerada, asignable y facturable por separado.</div>
     </div>
     <div>
         <button type="submit" class="btn btn-success">Guardar</button>
@@ -66,7 +75,7 @@
     private async Task CrearActivoAsync()
     {
         errorMessage = null;
-        var placa = nuevoActivo.Placa.Trim();
+        var placaBase = nuevoActivo.Placa.Trim();
 
         if (nuevoActivo.TipoEquipoId <= 0)
         {
@@ -74,23 +83,39 @@
             return;
         }
 
-        var yaExiste = await Db.Activos.AnyAsync(a => a.Placa == placa);
-        if (yaExiste)
+        if (nuevoActivo.Cantidad < 1)
         {
-            errorMessage = $"Ya existe un activo con la placa '{placa}'.";
+            errorMessage = "La cantidad debe ser al menos 1.";
             return;
         }
 
-        var activo = new Activo
-        {
-            Placa = placa,
-            TipoEquipoId = nuevoActivo.TipoEquipoId,
-            Estado = EstadoActivo.Disponible,
-            ProyectoActualId = null,
-            FechaRegistro = DateOnly.FromDateTime(DateTime.Now)
-        };
+        var placas = nuevoActivo.Cantidad == 1
+            ? [placaBase]
+            : await GenerarPlacasConsecutivasAsync(placaBase, nuevoActivo.Cantidad);
 
-        Db.Activos.Add(activo);
+        var placaDuplicada = await Db.Activos
+            .Where(a => placas.Contains(a.Placa))
+            .Select(a => a.Placa)
+            .FirstOrDefaultAsync();
+
+        if (placaDuplicada is not null)
+        {
+            errorMessage = $"Ya existe un activo con la placa '{placaDuplicada}'.";
+            return;
+        }
+
+        var fechaRegistro = DateOnly.FromDateTime(DateTime.Now);
+        foreach (var placa in placas)
+        {
+            Db.Activos.Add(new Activo
+            {
+                Placa = placa,
+                TipoEquipoId = nuevoActivo.TipoEquipoId,
+                Estado = EstadoActivo.Disponible,
+                ProyectoActualId = null,
+                FechaRegistro = fechaRegistro
+            });
+        }
 
         try
         {
@@ -98,11 +123,33 @@
         }
         catch (DbUpdateException)
         {
-            errorMessage = $"Ya existe un activo con la placa '{placa}'.";
+            errorMessage = "Ya existe un activo con alguna de esas placas.";
             return;
         }
 
         NavigationManager.NavigateTo("/inventario");
+    }
+
+    private async Task<List<string>> GenerarPlacasConsecutivasAsync(string prefijo, int cantidad)
+    {
+        var patron = $"{prefijo}-";
+        var sufijosExistentes = await Db.Activos
+            .Where(a => a.Placa.StartsWith(patron))
+            .Select(a => a.Placa)
+            .ToListAsync();
+
+        var maxConsecutivo = 0;
+        foreach (var placa in sufijosExistentes)
+        {
+            if (int.TryParse(placa[patron.Length..], out var numero) && numero > maxConsecutivo)
+            {
+                maxConsecutivo = numero;
+            }
+        }
+
+        return Enumerable.Range(maxConsecutivo + 1, cantidad)
+            .Select(n => $"{prefijo}-{n:D3}")
+            .ToList();
     }
 
     private class ActivoFormModel
@@ -111,5 +158,8 @@
         public string Placa { get; set; } = string.Empty;
 
         public int TipoEquipoId { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(1, 500, ErrorMessage = "La cantidad debe ser entre 1 y 500")]
+        public int Cantidad { get; set; } = 1;
     }
 }
