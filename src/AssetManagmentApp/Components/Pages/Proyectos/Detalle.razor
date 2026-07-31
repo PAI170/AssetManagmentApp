@@ -196,7 +196,6 @@ else
                     <th>Período</th>
                     <th>Total</th>
                     <th>Estado</th>
-                    <th>Enviada por correo</th>
                     <th></th>
                 </tr>
             </thead>
@@ -209,7 +208,6 @@ else
                         <td>@proforma.PeriodoDesde.ToString("dd/MM/yyyy") - @proforma.PeriodoHasta.ToString("dd/MM/yyyy")</td>
                         <td>₡@proforma.Total.ToString("N2")</td>
                         <td>@proforma.Estado</td>
-                        <td>@(proforma.EnviadaPorCorreo ? "Sí" : "No")</td>
                         <td>
                             <a class="btn btn-sm btn-outline-secondary" href="@($"/proformas/{proforma.Id}/pdf")" target="_blank">Descargar PDF</a>
                             @if (proforma.Estado == EstadoProforma.Generada)
