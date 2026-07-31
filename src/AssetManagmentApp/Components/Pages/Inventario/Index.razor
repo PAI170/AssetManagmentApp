@@ -112,6 +112,7 @@ else
                                                 }
                                             }
                                         </select>
+                                        <input type="date" class="form-control form-control-sm" @bind="accionFechaTraslado" max="@fechaMaxima" />
                                         <button class="btn btn-sm btn-success" @onclick="() => ConfirmarAsignarAsync(activo)">Confirmar</button>
                                         <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
                                     </div>
@@ -170,8 +171,10 @@ else
     private int? filaAccionId;
     private string filaAccionTipo = "";
     private int accionProyectoId;
+    private DateOnly accionFechaTraslado;
     private EstadoActivo accionNuevoEstado;
     private string accionObservacion = "";
+    private readonly string fechaMaxima = DateOnly.FromDateTime(DateTime.Now).ToString("yyyy-MM-dd");
 
     [CascadingParameter]
     private Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthStateTask { get; set; }
@@ -226,6 +229,7 @@ else
         filaAccionId = activo.Id;
         filaAccionTipo = "asignar";
         accionProyectoId = 0;
+        accionFechaTraslado = DateOnly.FromDateTime(DateTime.Now);
         errorMessage = null;
     }
 
@@ -265,6 +269,13 @@ else
             return;
         }
 
+        var hoy = DateOnly.FromDateTime(DateTime.Now);
+        if (accionFechaTraslado > hoy)
+        {
+            errorMessage = "La fecha de traslado no puede ser futura.";
+            return;
+        }
+
         var activo = await Db.Activos.FirstOrDefaultAsync(a => a.Id == activoOriginal.Id);
         if (activo is null || activo.Estado != EstadoActivo.Disponible)
         {
@@ -275,7 +286,6 @@ else
         }
 
         var usuarioId = await ObtenerUsuarioActualIdAsync();
-        var hoy = DateOnly.FromDateTime(DateTime.Now);
 
         Db.Movimientos.Add(new Movimiento
         {
@@ -284,7 +294,7 @@ else
             TipoMovimiento = TipoMovimiento.Asignacion,
             EstadoAnterior = EstadoActivo.Disponible,
             EstadoNuevo = EstadoActivo.Asignado,
-            FechaMovimiento = DateTime.Now,
+            FechaMovimiento = accionFechaTraslado.ToDateTime(TimeOnly.FromDateTime(DateTime.Now)),
             UsuarioId = usuarioId
         });
 
@@ -292,9 +302,9 @@ else
         {
             ActivoId = activo.Id,
             ProyectoId = accionProyectoId,
-            FechaIngreso = hoy,
+            FechaIngreso = accionFechaTraslado,
             FechaSalida = null,
-            FechaUltimoCobro = hoy
+            FechaUltimoCobro = accionFechaTraslado
         });
 
         activo.Estado = EstadoActivo.Asignado;
