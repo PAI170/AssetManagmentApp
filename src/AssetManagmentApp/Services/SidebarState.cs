@@ -11,4 +11,13 @@ public class SidebarState
         Colapsado = !Colapsado;
         OnChange?.Invoke();
     }
+
+    public void Cerrar()
+    {
+        if (Colapsado)
+        {
+            Colapsado = false;
+            OnChange?.Invoke();
+        }
+    }
 }

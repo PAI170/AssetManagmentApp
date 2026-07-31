@@ -7,6 +7,10 @@
     background-color: rgba(0,0,0,0.4);
 }
 
+.nav-backdrop {
+    display: none;
+}
+
 .navbar-brand {
     font-size: 1.1rem;
 }
@@ -120,6 +124,17 @@
 @media (max-width: 640.98px) {
     .top-row {
         display: none;
+    }
+
+    .nav-backdrop {
+        display: block;
+        position: fixed;
+        top: 3.5rem;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 1029;
     }
 
     .nav-scrollable {

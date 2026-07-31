@@ -1,9 +1,15 @@
 @implements IDisposable
 @inject NavigationManager Navigation
 @inject AssetManagmentApp.Services.SidebarState SidebarState
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <div class="sidebar @(SidebarState.Colapsado ? "colapsado" : "")">
+
+@if (SidebarState.Colapsado)
+{
+    <div class="nav-backdrop" @onclick="SidebarState.Cerrar"></div>
+}
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid d-flex align-items-center">
@@ -93,10 +99,26 @@
 
     private void HandleSidebarStateChanged() => InvokeAsync(StateHasChanged);
 
-    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
         gruposExpandidos.Clear();
-        InvokeAsync(StateHasChanged);
+
+        if (SidebarState.Colapsado)
+        {
+            try
+            {
+                if (await JS.InvokeAsync<bool>("sidebarInterop.esMobile"))
+                {
+                    SidebarState.Cerrar();
+                }
+            }
+            catch (JSDisconnectedException)
+            {
+                // El circuito se esta cerrando (navegacion fuera de la app); nada que hacer.
+            }
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private void ExpandirGrupoActivo()
