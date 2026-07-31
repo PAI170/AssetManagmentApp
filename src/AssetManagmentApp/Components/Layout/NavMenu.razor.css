@@ -131,6 +131,7 @@
         transition: transform 0.25s ease-in-out;
         box-shadow: 4px 0 12px rgba(0, 0, 0, 0.35);
         z-index: 1030;
+        background-image: linear-gradient(180deg, var(--brand-navy-light, #2A4362) 0%, var(--brand-navy-dark, #0E1727) 100%);
     }
 
     .sidebar.colapsado .nav-scrollable {
