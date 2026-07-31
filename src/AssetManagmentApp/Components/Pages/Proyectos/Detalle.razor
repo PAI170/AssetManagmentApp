@@ -18,13 +18,17 @@
 }
 else
 {
-    <h1>@proyecto.Nombre</h1>
-    <p class="text-muted mb-1">@proyecto.Direccion</p>
-    <p class="mb-3">
-        Ingeniero a cargo: <strong>@proyecto.IngenieroACargo</strong> ·
-        Estado: <strong>@proyecto.Estado</strong> ·
-        Creado: @proyecto.FechaCreacion.ToString("dd/MM/yyyy")
-    </p>
+    <div class="page-card mb-3">
+        <h1 class="mb-0">@proyecto.Nombre</h1>
+        <p class="text-muted mb-1">@proyecto.Direccion</p>
+        <p class="mb-0">
+            Ingeniero a cargo: <strong>@proyecto.IngenieroACargo</strong> ·
+            Estado: <strong>@proyecto.Estado</strong> ·
+            Creado: @proyecto.FechaCreacion.ToString("dd/MM/yyyy")
+        </p>
+    </div>
+
+    <div class="page-card">
 
     <div class="card mb-4">
         <div class="card-body">
@@ -215,6 +219,8 @@ else
             </tbody>
         </table>
     }
+
+    </div>
 }
 
 @code {

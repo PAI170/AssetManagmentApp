@@ -8,7 +8,11 @@
 
 <PageTitle>Usuarios</PageTitle>
 
-<h1>Usuarios</h1>
+<div class="page-card mb-3">
+    <h1 class="mb-0">Usuarios</h1>
+</div>
+
+<div class="page-card">
 
 @if (mensaje is not null)
 {
@@ -108,6 +112,8 @@ else
         </tbody>
     </table>
 }
+
+</div>
 
 @code {
     private List<FilaUsuario>? usuarios;

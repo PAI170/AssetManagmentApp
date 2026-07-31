@@ -8,7 +8,11 @@
 
 <PageTitle>Tipo de Equipo</PageTitle>
 
-<h1>Tipo de Equipo</h1>
+<div class="page-card mb-3">
+    <h1 class="mb-0">Tipo de Equipo</h1>
+</div>
+
+<div class="page-card">
 
 @if (errorMessage is not null)
 {
@@ -62,6 +66,8 @@ else
         </tbody>
     </table>
 }
+
+</div>
 
 @code {
     private List<TipoEquipo>? tipos;

@@ -8,7 +8,11 @@
 
 <PageTitle>Nuevo Tipo de Equipo</PageTitle>
 
-<h1>Nuevo Tipo de Equipo</h1>
+<div class="page-card mb-3">
+    <h1 class="mb-0">Nuevo Tipo de Equipo</h1>
+</div>
+
+<div class="page-card">
 
 <EditForm Model="nuevoTipo" OnValidSubmit="CrearTipoAsync" class="card card-body" style="max-width: 480px;">
     <DataAnnotationsValidator />
@@ -30,6 +34,8 @@
         <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
     </div>
 </EditForm>
+
+</div>
 
 @code {
     private TipoEquipoFormModel nuevoTipo = new();

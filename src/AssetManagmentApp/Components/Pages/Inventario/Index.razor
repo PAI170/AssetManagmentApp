@@ -10,7 +10,11 @@
 
 <PageTitle>Inventario</PageTitle>
 
-<h1>Inventario</h1>
+<div class="page-card mb-3">
+    <h1 class="mb-0">Inventario</h1>
+</div>
+
+<div class="page-card">
 
 @if (errorMessage is not null)
 {
@@ -147,6 +151,8 @@ else
         </tbody>
     </table>
 }
+
+</div>
 
 @code {
     private List<Activo>? activos;

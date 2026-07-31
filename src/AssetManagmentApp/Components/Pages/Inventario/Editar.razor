@@ -8,7 +8,11 @@
 
 <PageTitle>Editar Activo</PageTitle>
 
-<h1>Editar Activo</h1>
+<div class="page-card mb-3">
+    <h1 class="mb-0">Editar Activo</h1>
+</div>
+
+<div class="page-card">
 
 @if (errorMessage is not null)
 {
@@ -90,6 +94,8 @@ else
         </table>
     }
 }
+
+</div>
 
 @code {
     private List<Activo>? activos;

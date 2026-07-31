@@ -9,7 +9,11 @@
 
 <PageTitle>Nuevo Usuario</PageTitle>
 
-<h1>Nuevo Usuario</h1>
+<div class="page-card mb-3">
+    <h1 class="mb-0">Nuevo Usuario</h1>
+</div>
+
+<div class="page-card">
 
 @if (errorMessage is not null)
 {
@@ -43,6 +47,8 @@
         <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
     </div>
 </EditForm>
+
+</div>
 
 @code {
     private NuevoUsuarioModel nuevoUsuario = new();
