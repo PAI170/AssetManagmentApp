@@ -82,11 +82,15 @@
 }
 
 .nav-submenu {
-    display: flex;
+    display: none;
     flex-direction: column;
     padding-left: 2.7rem;
     margin-bottom: 0.25rem;
 }
+
+    .nav-submenu.abierto {
+        display: flex;
+    }
 
     .nav-submenu ::deep .nav-sublink {
         color: #b8bfca;
