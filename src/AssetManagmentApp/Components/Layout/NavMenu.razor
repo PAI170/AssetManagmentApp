@@ -18,7 +18,7 @@
         </div>
 
         <div class="nav-item px-3">
-            <div class="nav-link nav-group-toggle" role="button" @onclick='() => AlternarGrupo("proyectos")'>
+            <div class="nav-link nav-group-toggle" role="button" @onclick='() => AlternarGrupo("proyectos")' @onclick:stopPropagation="true">
                 <i class="bi bi-diagram-3" aria-hidden="true"></i> Proyectos
                 <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("proyectos") ? "rotated" : "")" aria-hidden="true"></i>
             </div>
@@ -32,7 +32,7 @@
         </div>
 
         <div class="nav-item px-3">
-            <div class="nav-link nav-group-toggle" role="button" @onclick='() => AlternarGrupo("inventario")'>
+            <div class="nav-link nav-group-toggle" role="button" @onclick='() => AlternarGrupo("inventario")' @onclick:stopPropagation="true">
                 <i class="bi bi-box-seam" aria-hidden="true"></i> Inventario
                 <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("inventario") ? "rotated" : "")" aria-hidden="true"></i>
             </div>
@@ -53,7 +53,7 @@
         </div>
 
         <div class="nav-item px-3">
-            <div class="nav-link nav-group-toggle" role="button" @onclick='() => AlternarGrupo("tipos-equipo")'>
+            <div class="nav-link nav-group-toggle" role="button" @onclick='() => AlternarGrupo("tipos-equipo")' @onclick:stopPropagation="true">
                 <i class="bi bi-tags" aria-hidden="true"></i> Tipo de Equipo
                 <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("tipos-equipo") ? "rotated" : "")" aria-hidden="true"></i>
             </div>
@@ -69,7 +69,7 @@
         <AuthorizeView Roles="Admin">
             <Authorized>
                 <div class="nav-item px-3">
-                    <div class="nav-link nav-group-toggle" role="button" @onclick='() => AlternarGrupo("usuarios")'>
+                    <div class="nav-link nav-group-toggle" role="button" @onclick='() => AlternarGrupo("usuarios")' @onclick:stopPropagation="true">
                         <i class="bi bi-people" aria-hidden="true"></i> Usuarios
                         <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("usuarios") ? "rotated" : "")" aria-hidden="true"></i>
                     </div>
