@@ -134,9 +134,11 @@
         try
         {
             await Db.SaveChangesAsync();
+            Db.ChangeTracker.Clear();
         }
         catch (DbUpdateException ex)
         {
+            Db.ChangeTracker.Clear();
             errorMessage = EsErrorDeDuplicado(ex)
                 ? "Ya existe un activo con alguna de esas placas."
                 : "No se pudo guardar: hubo un error de conexión con la base de datos. Intentá de nuevo.";

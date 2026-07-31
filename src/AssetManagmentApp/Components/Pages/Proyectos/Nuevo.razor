@@ -58,6 +58,7 @@
 
         Db.Proyectos.Add(proyecto);
         await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
 
         NavigationManager.NavigateTo("/proyectos");
     }

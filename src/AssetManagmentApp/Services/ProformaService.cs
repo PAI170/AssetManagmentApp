@@ -120,6 +120,7 @@ public class ProformaService(AppDbContext db)
         }
 
         await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
         return proforma;
     }
 
@@ -130,6 +131,7 @@ public class ProformaService(AppDbContext db)
 
         proforma.Estado = EstadoProforma.Anulada;
         await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
     }
 
     private async Task<string> GenerarNumeroConsecutivoAsync(DateTime fechaGeneracion)

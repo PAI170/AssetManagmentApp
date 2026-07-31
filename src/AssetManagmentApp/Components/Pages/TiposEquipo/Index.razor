@@ -150,6 +150,7 @@ else
         }
 
         await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
 
         eliminandoId = null;
         await CargarAsync();
@@ -205,6 +206,7 @@ else
         }
 
         await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
         editandoId = null;
         await CargarAsync();
     }

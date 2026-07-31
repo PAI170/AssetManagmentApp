@@ -169,6 +169,7 @@ else
         activo.TipoEquipoId = edicion.TipoEquipoId;
 
         await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
 
         editandoId = null;
         mensaje = $"Activo '{placa}' actualizado.";

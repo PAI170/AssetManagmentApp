@@ -65,6 +65,7 @@
 
         Db.TiposEquipo.Add(tipo);
         await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
 
         NavigationManager.NavigateTo("/tipos-equipo");
     }

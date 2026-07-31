@@ -135,6 +135,7 @@ else
         proyecto.Estado = edicion.Estado;
 
         await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
         editandoId = null;
         await CargarAsync();
     }
