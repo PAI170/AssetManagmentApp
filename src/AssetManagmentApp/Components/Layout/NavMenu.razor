@@ -27,7 +27,7 @@
                 <i class="bi bi-diagram-3" aria-hidden="true"></i> <span class="nav-label">Proyectos</span>
                 <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("proyectos") ? "rotated" : "")" aria-hidden="true"></i>
             </div>
-            @if (EstaExpandido("proyectos"))
+            @if (EstaExpandido("proyectos") || SidebarState.Colapsado)
             {
                 <div class="nav-submenu">
                     <NavLink class="nav-sublink" href="proyectos" Match="NavLinkMatch.All">Todos los Proyectos</NavLink>
@@ -41,7 +41,7 @@
                 <i class="bi bi-box-seam" aria-hidden="true"></i> <span class="nav-label">Inventario</span>
                 <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("inventario") ? "rotated" : "")" aria-hidden="true"></i>
             </div>
-            @if (EstaExpandido("inventario"))
+            @if (EstaExpandido("inventario") || SidebarState.Colapsado)
             {
                 <div class="nav-submenu">
                     <NavLink class="nav-sublink" href="inventario" Match="NavLinkMatch.All">Todo el Inventario</NavLink>
@@ -62,7 +62,7 @@
                 <i class="bi bi-tags" aria-hidden="true"></i> <span class="nav-label">Tipo de Equipo</span>
                 <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("tipos-equipo") ? "rotated" : "")" aria-hidden="true"></i>
             </div>
-            @if (EstaExpandido("tipos-equipo"))
+            @if (EstaExpandido("tipos-equipo") || SidebarState.Colapsado)
             {
                 <div class="nav-submenu">
                     <NavLink class="nav-sublink" href="tipos-equipo" Match="NavLinkMatch.All">Todos los Tipos</NavLink>
@@ -78,7 +78,7 @@
                         <i class="bi bi-people" aria-hidden="true"></i> <span class="nav-label">Usuarios</span>
                         <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("usuarios") ? "rotated" : "")" aria-hidden="true"></i>
                     </div>
-                    @if (EstaExpandido("usuarios"))
+                    @if (EstaExpandido("usuarios") || SidebarState.Colapsado)
                     {
                         <div class="nav-submenu">
                             <NavLink class="nav-sublink" href="usuarios" Match="NavLinkMatch.All">Todos los Usuarios</NavLink>
