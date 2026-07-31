@@ -157,9 +157,14 @@ public class ProformaService(AppDbContext db)
     private static IEnumerable<(DateOnly Desde, DateOnly HastaExclusive, decimal Precio)> PartirPorCambioDePrecio(
         DateOnly desde, DateOnly hastaExclusive, List<HistorialPrecioTipoEquipo> historial)
     {
-        foreach (var h in historial)
+        for (var i = 0; i < historial.Count; i++)
         {
-            var tramoDesde = h.VigenteDesde > desde ? h.VigenteDesde : desde;
+            var h = historial[i];
+
+            // El primer precio registrado se extiende hacia atrás si la asignación
+            // es anterior a cuando se registró ese precio, ya que no hay un precio
+            // previo con el cual facturar esos días (evita perder días facturables).
+            var tramoDesde = i == 0 ? desde : (h.VigenteDesde > desde ? h.VigenteDesde : desde);
             var vigenteHastaExclusive = h.VigenteHasta.HasValue ? h.VigenteHasta.Value.AddDays(1) : hastaExclusive;
             var tramoHasta = vigenteHastaExclusive < hastaExclusive ? vigenteHastaExclusive : hastaExclusive;
 
