@@ -1,0 +1,22 @@
+@rendermode InteractiveServer
+@implements IDisposable
+@using AssetManagmentApp.Services
+@inject SidebarState SidebarState
+
+<button type="button" class="btn-toggle-sidebar" title="@(SidebarState.Colapsado ? "Expandir menú" : "Colapsar menú")" @onclick="SidebarState.Alternar">
+    <i class="bi @(SidebarState.Colapsado ? "bi-chevron-double-right" : "bi-chevron-double-left")" aria-hidden="true"></i>
+</button>
+
+@code {
+    protected override void OnInitialized()
+    {
+        SidebarState.OnChange += HandleChange;
+    }
+
+    private void HandleChange() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        SidebarState.OnChange -= HandleChange;
+    }
+}

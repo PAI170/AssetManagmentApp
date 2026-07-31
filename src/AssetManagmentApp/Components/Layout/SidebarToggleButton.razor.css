@@ -1,0 +1,20 @@
+.btn-toggle-sidebar {
+    background: none;
+    border: none;
+    color: var(--brand-navy, #16233A);
+    cursor: pointer;
+    padding: 0.4rem 0.6rem;
+    font-size: 1.1rem;
+    border-radius: 4px;
+    line-height: 1;
+}
+
+.btn-toggle-sidebar:hover {
+    background-color: rgba(0, 0, 0, 0.06);
+}
+
+@media (max-width: 640.98px) {
+    .btn-toggle-sidebar {
+        display: none;
+    }
+}

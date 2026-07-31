@@ -28,28 +28,6 @@
     font-size: 1.1rem;
 }
 
-.btn-collapse-sidebar {
-    background: none;
-    border: none;
-    color: #d7d7d7;
-    cursor: pointer;
-    padding: 0.25rem 0.5rem;
-    font-size: 1.1rem;
-    border-radius: 4px;
-    line-height: 1;
-}
-
-.btn-collapse-sidebar:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
-}
-
-@media (max-width: 640.98px) {
-    .btn-collapse-sidebar {
-        display: none;
-    }
-}
-
 .nav-item ::deep .bi {
     display: inline-block;
     width: 1.5rem;
@@ -83,7 +61,7 @@
         width: 100%;
     }
 
-.nav-item ::deep a.active {
+.nav-item ::deep a.active:not(.nav-sublink) {
     background-color: var(--brand-orange, #E07F1A);
     color: white;
 }

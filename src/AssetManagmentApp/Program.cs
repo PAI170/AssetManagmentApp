@@ -41,6 +41,7 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<ProformaService>();
+builder.Services.AddScoped<SidebarState>();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

@@ -1,15 +1,13 @@
 @implements IDisposable
 @inject NavigationManager Navigation
+@inject AssetManagmentApp.Services.SidebarState SidebarState
 @rendermode InteractiveServer
 
-<div class="sidebar @(colapsado ? "colapsado" : "")">
+<div class="sidebar @(SidebarState.Colapsado ? "colapsado" : "")">
 
 <div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid d-flex align-items-center justify-content-between">
-        <a class="navbar-brand @(colapsado ? "d-none" : "")" href="">Control de Equipos</a>
-        <button type="button" class="btn-collapse-sidebar" title="@(colapsado ? "Expandir menú" : "Colapsar menú")" @onclick="AlternarColapso">
-            <i class="bi @(colapsado ? "bi-chevron-double-right" : "bi-chevron-double-left")" aria-hidden="true"></i>
-        </button>
+    <div class="container-fluid">
+        <a class="navbar-brand @(SidebarState.Colapsado ? "d-none" : "")" href="">Control de Equipos</a>
     </div>
 </div>
 
@@ -28,7 +26,7 @@
                 <i class="bi bi-diagram-3" aria-hidden="true"></i> <span class="nav-label">Proyectos</span>
                 <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("proyectos") ? "rotated" : "")" aria-hidden="true"></i>
             </div>
-            @if (EstaExpandido("proyectos") && !colapsado)
+            @if (EstaExpandido("proyectos") && !SidebarState.Colapsado)
             {
                 <div class="nav-submenu">
                     <NavLink class="nav-sublink" href="proyectos" Match="NavLinkMatch.All">Todos los Proyectos</NavLink>
@@ -42,7 +40,7 @@
                 <i class="bi bi-box-seam" aria-hidden="true"></i> <span class="nav-label">Inventario</span>
                 <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("inventario") ? "rotated" : "")" aria-hidden="true"></i>
             </div>
-            @if (EstaExpandido("inventario") && !colapsado)
+            @if (EstaExpandido("inventario") && !SidebarState.Colapsado)
             {
                 <div class="nav-submenu">
                     <NavLink class="nav-sublink" href="inventario" Match="NavLinkMatch.All">Todo el Inventario</NavLink>
@@ -63,7 +61,7 @@
                 <i class="bi bi-tags" aria-hidden="true"></i> <span class="nav-label">Tipo de Equipo</span>
                 <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("tipos-equipo") ? "rotated" : "")" aria-hidden="true"></i>
             </div>
-            @if (EstaExpandido("tipos-equipo") && !colapsado)
+            @if (EstaExpandido("tipos-equipo") && !SidebarState.Colapsado)
             {
                 <div class="nav-submenu">
                     <NavLink class="nav-sublink" href="tipos-equipo" Match="NavLinkMatch.All">Todos los Tipos</NavLink>
@@ -79,7 +77,7 @@
                         <i class="bi bi-people" aria-hidden="true"></i> <span class="nav-label">Usuarios</span>
                         <i class="bi bi-chevron-right nav-chevron ms-auto @(EstaExpandido("usuarios") ? "rotated" : "")" aria-hidden="true"></i>
                     </div>
-                    @if (EstaExpandido("usuarios") && !colapsado)
+                    @if (EstaExpandido("usuarios") && !SidebarState.Colapsado)
                     {
                         <div class="nav-submenu">
                             <NavLink class="nav-sublink" href="usuarios" Match="NavLinkMatch.All">Todos los Usuarios</NavLink>
@@ -96,18 +94,15 @@
 
 @code {
     private readonly HashSet<string> gruposExpandidos = new();
-    private bool colapsado;
-
-    private void AlternarColapso()
-    {
-        colapsado = !colapsado;
-    }
 
     protected override void OnInitialized()
     {
         Navigation.LocationChanged += OnLocationChanged;
+        SidebarState.OnChange += HandleSidebarStateChanged;
         ExpandirGrupoActivo();
     }
+
+    private void HandleSidebarStateChanged() => InvokeAsync(StateHasChanged);
 
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
@@ -142,5 +137,6 @@
     public void Dispose()
     {
         Navigation.LocationChanged -= OnLocationChanged;
+        SidebarState.OnChange -= HandleSidebarStateChanged;
     }
 }
