@@ -58,12 +58,12 @@
     }
 
 .nav-item ::deep a.active {
-    background-color: rgba(255,255,255,0.37);
+    background-color: var(--brand-orange, #E07F1A);
     color: white;
 }
 
 .nav-item ::deep .nav-link:hover {
-    background-color: rgba(255,255,255,0.1);
+    background-color: rgba(224, 127, 26, 0.2);
     color: white;
 }
 

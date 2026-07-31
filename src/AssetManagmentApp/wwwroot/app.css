@@ -1,5 +1,13 @@
+:root {
+    --brand-navy-dark: #0E1727;
+    --brand-navy: #16233A;
+    --brand-navy-light: #2A4362;
+    --brand-orange: #E07F1A;
+    --brand-orange-dark: #C96A12;
+}
+
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 #blazor-error-ui {
@@ -22,17 +30,38 @@ html, body {
     }
 
 a, .btn-link {
-    color: #006bb7;
+    color: var(--brand-navy);
 }
 
 .btn-primary {
     color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+    background-color: var(--brand-navy);
+    border-color: var(--brand-navy);
+}
+
+    .btn-primary:hover, .btn-primary:active, .btn-primary:focus {
+        background-color: var(--brand-navy-light);
+        border-color: var(--brand-navy-light);
+        color: #fff;
+    }
+
+.btn-outline-primary {
+    color: var(--brand-navy);
+    border-color: var(--brand-navy);
+}
+
+    .btn-outline-primary:hover, .btn-outline-primary:active {
+        background-color: var(--brand-navy);
+        border-color: var(--brand-navy);
+        color: #fff;
+    }
+
+.bg-primary {
+    background-color: var(--brand-navy) !important;
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem var(--brand-orange);
 }
 
 .content {
@@ -76,12 +105,10 @@ h1:focus {
     align-items: center;
     justify-content: center;
     padding: 24px;
-    background-color: #0F2A57;
+    background-color: var(--brand-navy);
     background-image:
-        linear-gradient(160deg, rgba(30, 136, 199, 0.92) 0%, rgba(27, 62, 125, 0.94) 50%, rgba(15, 42, 87, 0.96) 100%),
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1.4' opacity='0.16'%3E%3Crect x='14' y='10' width='42' height='56' rx='3'/%3E%3Cline x1='22' y1='24' x2='48' y2='24'/%3E%3Cline x1='22' y1='34' x2='48' y2='34'/%3E%3Cline x1='22' y1='44' x2='38' y2='44'/%3E%3Ccircle cx='104' cy='96' r='19'/%3E%3Cpath d='M104 87v18M97 100h14M99 92c0-2.5 2-4 5-4s5 1.5 5 4-2 3.5-5 3.5-5 1-5 3.5 2 4 5 4 5-1.5 5-4' stroke-width='1.2'/%3E%3C/g%3E%3C/svg%3E");
-    background-size: cover, 140px 140px;
-    background-position: center, center;
+        radial-gradient(circle at 85% 12%, rgba(224, 127, 26, 0.38) 0%, rgba(224, 127, 26, 0) 45%),
+        linear-gradient(160deg, var(--brand-navy-light) 0%, var(--brand-navy) 55%, var(--brand-navy-dark) 100%);
 }
 
 .login-card {
@@ -96,8 +123,8 @@ h1:focus {
 .login-logo {
     display: block;
     margin: 0 auto 12px;
-    height: 84px;
-    width: 84px;
+    height: 120px;
+    width: 120px;
     object-fit: contain;
 }
 
@@ -106,7 +133,7 @@ h1:focus {
     font-weight: 700;
     font-size: 1.3rem;
     letter-spacing: 0.03em;
-    color: #1B3E7D;
+    color: var(--brand-navy);
     margin-bottom: 4px;
 }
 
@@ -124,8 +151,8 @@ h1:focus {
 }
 
 .login-card .form-control:focus {
-    border-color: #1E88C7;
-    box-shadow: 0 0 0 0.2rem rgba(30, 136, 199, 0.2);
+    border-color: var(--brand-orange);
+    box-shadow: 0 0 0 0.2rem rgba(224, 127, 26, 0.25);
 }
 
 .btn-login {
@@ -135,11 +162,11 @@ h1:focus {
     padding: 0.7rem;
     font-weight: 600;
     color: #fff;
-    background-image: linear-gradient(180deg, #1E88C7 0%, #1B3E7D 100%);
+    background-image: linear-gradient(180deg, var(--brand-navy-light) 0%, var(--brand-navy) 100%);
 }
 
 .btn-login:hover {
-    filter: brightness(1.05);
+    filter: brightness(1.1);
     color: #fff;
 }
 
