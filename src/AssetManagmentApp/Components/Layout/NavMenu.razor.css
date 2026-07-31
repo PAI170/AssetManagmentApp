@@ -153,11 +153,14 @@
         display: block;
         height: calc(100vh - 3.5rem);
         overflow-y: auto;
-        overflow-x: visible;
     }
 
     .sidebar.colapsado {
         width: 4.5rem;
+    }
+
+    .sidebar.colapsado .nav-scrollable {
+        overflow: visible;
     }
 
     .sidebar.colapsado .nav-item {
