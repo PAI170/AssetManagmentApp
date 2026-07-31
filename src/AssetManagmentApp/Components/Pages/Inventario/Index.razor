@@ -69,26 +69,59 @@
     <Authorized>
         @if (seleccionados.Count > 0)
         {
-            <div class="d-flex gap-2 align-items-end mb-3 p-2 border rounded">
+            <div class="d-flex flex-wrap gap-2 align-items-end mb-3 p-2 border rounded">
                 <div><strong>@seleccionados.Count</strong> seleccionado(s)</div>
                 <div>
-                    <label class="form-label mb-0">Proyecto</label>
-                    <select class="form-select form-select-sm" @bind="bulkProyectoId">
-                        <option value="0">-- Proyecto --</option>
-                        @if (proyectos is not null)
-                        {
-                            @foreach (var proyecto in proyectos)
-                            {
-                                <option value="@proyecto.Id">@proyecto.Nombre</option>
-                            }
-                        }
+                    <label class="form-label mb-0">Acción</label>
+                    <select class="form-select form-select-sm" @bind="bulkAccion">
+                        <option value="asignar">Asignar a proyecto</option>
+                        <option value="estado">Cambiar estado</option>
+                        <option value="eliminar">Eliminar</option>
                     </select>
                 </div>
-                <div>
-                    <label class="form-label mb-0">Fecha traslado</label>
-                    <input type="date" class="form-control form-control-sm" @bind="bulkFecha" max="@fechaMaxima" />
-                </div>
-                <button class="btn btn-sm btn-success" @onclick="ConfirmarAsignarMasivoAsync">Asignar seleccionados</button>
+                @if (bulkAccion == "asignar")
+                {
+                    <div>
+                        <label class="form-label mb-0">Proyecto</label>
+                        <select class="form-select form-select-sm" @bind="bulkProyectoId">
+                            <option value="0">-- Proyecto --</option>
+                            @if (proyectos is not null)
+                            {
+                                @foreach (var proyecto in proyectos)
+                                {
+                                    <option value="@proyecto.Id">@proyecto.Nombre</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label mb-0">Fecha traslado</label>
+                        <input type="date" class="form-control form-control-sm" @bind="bulkFecha" max="@fechaMaxima" />
+                    </div>
+                    <button class="btn btn-sm btn-success" @onclick="ConfirmarAsignarMasivoAsync">Aplicar</button>
+                }
+                else if (bulkAccion == "estado")
+                {
+                    <div>
+                        <label class="form-label mb-0">Nuevo estado</label>
+                        <select class="form-select form-select-sm" @bind="bulkNuevoEstado">
+                            @foreach (var estado in Enum.GetValues<EstadoActivo>())
+                            {
+                                <option value="@estado">@EtiquetaEstado(estado)</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label mb-0">Observación</label>
+                        <input class="form-control form-control-sm" @bind="bulkObservacion" />
+                    </div>
+                    <button class="btn btn-sm btn-success" @onclick="ConfirmarCambiarEstadoMasivoAsync">Aplicar</button>
+                }
+                else if (bulkAccion == "eliminar")
+                {
+                    <div class="text-danger">Se omiten los que estén Asignados a un proyecto.</div>
+                    <button class="btn btn-sm btn-danger" @onclick="ConfirmarEliminarMasivoAsync">Eliminar seleccionados</button>
+                }
                 <button class="btn btn-sm btn-outline-secondary" @onclick="LimpiarSeleccion">Cancelar selección</button>
             </div>
         }
@@ -112,7 +145,7 @@ else
                 <th>
                     <AuthorizeView Roles="Admin">
                         <Authorized>
-                            <input type="checkbox" class="form-check-input" checked="@TodosDisponiblesSeleccionados" @onchange="ToggleSeleccionarTodos" title="Seleccionar todos los disponibles" />
+                            <input type="checkbox" class="form-check-input" checked="@TodosSeleccionados" @onchange="ToggleSeleccionarTodos" title="Seleccionar todos" />
                         </Authorized>
                     </AuthorizeView>
                 </th>
@@ -131,10 +164,7 @@ else
                     <td>
                         <AuthorizeView Roles="Admin">
                             <Authorized>
-                                @if (activo.Estado == EstadoActivo.Disponible)
-                                {
-                                    <input type="checkbox" class="form-check-input" checked="@seleccionados.Contains(activo.Id)" @onchange="e => ToggleSeleccion(activo.Id, (bool)e.Value!)" />
-                                }
+                                <input type="checkbox" class="form-check-input" checked="@seleccionados.Contains(activo.Id)" @onchange="e => ToggleSeleccion(activo.Id, (bool)e.Value!)" />
                             </Authorized>
                         </AuthorizeView>
                     </td>
@@ -244,8 +274,11 @@ else
     private readonly string fechaMaxima = DateOnly.FromDateTime(DateTime.Now).ToString("yyyy-MM-dd");
 
     private readonly HashSet<int> seleccionados = [];
+    private string bulkAccion = "asignar";
     private int bulkProyectoId;
     private DateOnly bulkFecha = DateOnly.FromDateTime(DateTime.Now);
+    private EstadoActivo bulkNuevoEstado;
+    private string bulkObservacion = "";
 
     [CascadingParameter]
     private Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthStateTask { get; set; }
@@ -301,10 +334,10 @@ else
         await CargarActivosAsync();
     }
 
-    private bool TodosDisponiblesSeleccionados =>
+    private bool TodosSeleccionados =>
         activos is not null
-        && activos.Any(a => a.Estado == EstadoActivo.Disponible)
-        && activos.Where(a => a.Estado == EstadoActivo.Disponible).All(a => seleccionados.Contains(a.Id));
+        && activos.Count > 0
+        && activos.All(a => seleccionados.Contains(a.Id));
 
     private void ToggleSeleccion(int activoId, bool marcado)
     {
@@ -333,7 +366,7 @@ else
             return;
         }
 
-        foreach (var activo in activos.Where(a => a.Estado == EstadoActivo.Disponible))
+        foreach (var activo in activos)
         {
             seleccionados.Add(activo.Id);
         }
@@ -342,6 +375,7 @@ else
     private void LimpiarSeleccion()
     {
         seleccionados.Clear();
+        bulkAccion = "asignar";
         errorMessage = null;
     }
 
@@ -518,6 +552,97 @@ else
         if (faltantes > 0)
         {
             errorMessage = $"{faltantes} activo(s) ya no estaban disponibles y no se asignaron.";
+        }
+    }
+
+    private async Task ConfirmarCambiarEstadoMasivoAsync()
+    {
+        errorMessage = null;
+
+        var idsSeleccionados = seleccionados.ToList();
+        if (idsSeleccionados.Count == 0)
+        {
+            errorMessage = "No hay activos seleccionados.";
+            return;
+        }
+
+        var activosDb = await Db.Activos
+            .Where(a => idsSeleccionados.Contains(a.Id) && a.Estado != bulkNuevoEstado)
+            .ToListAsync();
+
+        var usuarioId = await ObtenerUsuarioActualIdAsync();
+        var observacion = string.IsNullOrWhiteSpace(bulkObservacion) ? null : bulkObservacion.Trim();
+
+        foreach (var activo in activosDb)
+        {
+            Db.Movimientos.Add(new Movimiento
+            {
+                ActivoId = activo.Id,
+                ProyectoId = activo.ProyectoActualId,
+                TipoMovimiento = TipoMovimiento.CambioDeEstado,
+                EstadoAnterior = activo.Estado,
+                EstadoNuevo = bulkNuevoEstado,
+                FechaMovimiento = DateTime.Now,
+                UsuarioId = usuarioId,
+                Observacion = observacion
+            });
+
+            activo.Estado = bulkNuevoEstado;
+        }
+
+        await Db.SaveChangesAsync();
+
+        var omitidos = idsSeleccionados.Count - activosDb.Count;
+        seleccionados.Clear();
+        bulkObservacion = "";
+        await CargarActivosAsync();
+
+        if (omitidos > 0)
+        {
+            errorMessage = $"{omitidos} activo(s) ya tenían ese estado y se omitieron.";
+        }
+    }
+
+    private async Task ConfirmarEliminarMasivoAsync()
+    {
+        errorMessage = null;
+
+        var idsSeleccionados = seleccionados.ToList();
+        if (idsSeleccionados.Count == 0)
+        {
+            errorMessage = "No hay activos seleccionados.";
+            return;
+        }
+
+        var activosDb = await Db.Activos
+            .Where(a => idsSeleccionados.Contains(a.Id) && a.Estado != EstadoActivo.Asignado)
+            .ToListAsync();
+
+        foreach (var activo in activosDb)
+        {
+            var tieneHistorial = await Db.Movimientos.AnyAsync(m => m.ActivoId == activo.Id)
+                || await Db.AsignacionesActivoProyecto.AnyAsync(a => a.ActivoId == activo.Id)
+                || await Db.ProformaDetalles.AnyAsync(d => d.ActivoId == activo.Id);
+
+            if (tieneHistorial)
+            {
+                activo.Eliminado = true;
+            }
+            else
+            {
+                Db.Activos.Remove(activo);
+            }
+        }
+
+        await Db.SaveChangesAsync();
+
+        var omitidos = idsSeleccionados.Count - activosDb.Count;
+        seleccionados.Clear();
+        await CargarActivosAsync();
+
+        if (omitidos > 0)
+        {
+            errorMessage = $"{omitidos} activo(s) estaban asignados a un proyecto y se omitieron. Retornalos a bodega primero.";
         }
     }
 
