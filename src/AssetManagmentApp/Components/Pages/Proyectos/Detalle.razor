@@ -33,7 +33,8 @@ else
     <div class="card mb-4">
         <div class="card-body">
             <h5 class="card-title">Total gastado a la fecha</h5>
-            <p class="fs-3 mb-0">₡@totalGastado.ToString("N2")</p>
+            <p class="fs-3 mb-0">₡@((totalFacturado + totalPendiente).ToString("N2"))</p>
+            <p class="text-muted mb-0">Facturado: ₡@totalFacturado.ToString("N2") · Pendiente de facturar: ₡@totalPendiente.ToString("N2")</p>
         </div>
     </div>
 
@@ -237,7 +238,8 @@ else
     private List<Activo>? activosAsignados;
     private List<Movimiento>? movimientos;
     private List<Proforma>? proformas;
-    private decimal totalGastado;
+    private decimal totalFacturado;
+    private decimal totalPendiente;
 
     private bool mostrandoGenerar;
     private DateOnly fechaCorte;
@@ -281,10 +283,13 @@ else
             .OrderByDescending(p => p.FechaGeneracion)
             .ToListAsync();
 
-        totalGastado = await Db.Proformas
+        totalFacturado = await Db.Proformas
             .AsNoTracking()
             .Where(p => p.ProyectoId == Id && p.Estado != EstadoProforma.Anulada)
             .SumAsync(p => (decimal?)p.Total) ?? 0m;
+
+        var pendiente = await ProformaService.CalcularDetalleAsync(Id, DateOnly.FromDateTime(DateTime.Now));
+        totalPendiente = pendiente.Sum(l => l.Subtotal);
     }
 
     private void MostrarGenerar()
