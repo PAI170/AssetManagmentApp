@@ -6,8 +6,40 @@
     --brand-orange-dark: #C96A12;
 }
 
+@font-face {
+    font-family: 'Poppins';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('fonts/poppins/poppins-400.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Poppins';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('fonts/poppins/poppins-500.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Poppins';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('fonts/poppins/poppins-600.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Poppins';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('fonts/poppins/poppins-700.woff2') format('woff2');
+}
+
 html, body {
-    font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Poppins', sans-serif;
 }
 
 #blazor-error-ui {
