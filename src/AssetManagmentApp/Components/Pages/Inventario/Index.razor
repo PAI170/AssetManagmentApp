@@ -98,7 +98,7 @@
                         <label class="form-label mb-0">Fecha traslado</label>
                         <input type="date" class="form-control form-control-sm" @bind="bulkFecha" max="@fechaMaxima" />
                     </div>
-                    <button class="btn btn-sm btn-success" @onclick="ConfirmarAsignarMasivoAsync">Aplicar</button>
+                    <button class="btn btn-sm btn-success" disabled="@procesando" @onclick="ConfirmarAsignarMasivoAsync">Aplicar</button>
                 }
                 else if (bulkAccion == "estado")
                 {
@@ -115,12 +115,12 @@
                         <label class="form-label mb-0">Observación</label>
                         <input class="form-control form-control-sm" @bind="bulkObservacion" />
                     </div>
-                    <button class="btn btn-sm btn-success" @onclick="ConfirmarCambiarEstadoMasivoAsync">Aplicar</button>
+                    <button class="btn btn-sm btn-success" disabled="@procesando" @onclick="ConfirmarCambiarEstadoMasivoAsync">Aplicar</button>
                 }
                 else if (bulkAccion == "eliminar")
                 {
                     <div class="text-danger">Se omiten los que estén Asignados a un proyecto.</div>
-                    <button class="btn btn-sm btn-danger" @onclick="ConfirmarEliminarMasivoAsync">Eliminar seleccionados</button>
+                    <button class="btn btn-sm btn-danger" disabled="@procesando" @onclick="ConfirmarEliminarMasivoAsync">Eliminar seleccionados</button>
                 }
                 <button class="btn btn-sm btn-outline-secondary" @onclick="LimpiarSeleccion">Cancelar selección</button>
             </div>
@@ -196,7 +196,7 @@ else
                                             ¿Asignar "@activo.Placa" a "@NombreProyecto(accionProyectoId)" desde el @accionFechaTraslado.ToString("dd/MM/yyyy")?
                                         </div>
                                         <div class="d-flex gap-1">
-                                            <button class="btn btn-sm btn-success" @onclick="() => ConfirmarAsignarAsync(activo)">Confirmar</button>
+                                            <button class="btn btn-sm btn-success" disabled="@procesando" @onclick="() => ConfirmarAsignarAsync(activo)">Confirmar</button>
                                             <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
                                         </div>
                                     </div>
@@ -209,7 +209,7 @@ else
                                             ¿Retornar "@activo.Placa" a bodega el @accionFechaTraslado.ToString("dd/MM/yyyy")?
                                         </div>
                                         <div class="d-flex gap-1">
-                                            <button class="btn btn-sm btn-success" @onclick="() => ConfirmarRetornarAsync(activo)">Confirmar</button>
+                                            <button class="btn btn-sm btn-success" disabled="@procesando" @onclick="() => ConfirmarRetornarAsync(activo)">Confirmar</button>
                                             <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
                                         </div>
                                     </div>
@@ -230,7 +230,7 @@ else
                                             ¿Cambiar estado de "@activo.Placa" a "@EtiquetaEstado(accionNuevoEstado)"?
                                         </div>
                                         <div class="d-flex gap-1">
-                                            <button class="btn btn-sm btn-success" @onclick="() => ConfirmarCambiarEstadoAsync(activo)">Confirmar</button>
+                                            <button class="btn btn-sm btn-success" disabled="@procesando" @onclick="() => ConfirmarCambiarEstadoAsync(activo)">Confirmar</button>
                                             <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
                                         </div>
                                     </div>
@@ -239,7 +239,7 @@ else
                                 {
                                     <div class="d-flex gap-1 align-items-center">
                                         <span class="text-danger">¿Eliminar "@activo.Placa"?</span>
-                                        <button class="btn btn-sm btn-danger" @onclick="() => ConfirmarEliminarAsync(activo)">Confirmar</button>
+                                        <button class="btn btn-sm btn-danger" disabled="@procesando" @onclick="() => ConfirmarEliminarAsync(activo)">Confirmar</button>
                                         <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
                                     </div>
                                 }
@@ -283,6 +283,7 @@ else
     private string filtroProyectoId = "";
 
     private string? errorMessage;
+    private bool procesando;
 
     private int? filaAccionId;
     private string filaAccionTipo = "";
@@ -453,195 +454,374 @@ else
 
     private async Task ConfirmarAsignarAsync(Activo activoOriginal)
     {
-        errorMessage = null;
-
-        if (accionProyectoId <= 0)
+        if (procesando)
         {
-            errorMessage = "Seleccioná un proyecto.";
             return;
         }
 
-        var hoy = DateOnly.FromDateTime(DateTime.Now);
-        if (accionFechaTraslado > hoy)
+        procesando = true;
+        try
         {
-            errorMessage = "La fecha de traslado no puede ser futura.";
-            return;
-        }
+            errorMessage = null;
 
-        var activo = await Db.Activos.FirstOrDefaultAsync(a => a.Id == activoOriginal.Id);
-        if (activo is null || activo.Estado != EstadoActivo.Disponible)
-        {
-            errorMessage = "El activo ya no está disponible para asignar.";
-            filaAccionId = null;
-            await CargarActivosAsync();
-            return;
-        }
+            if (accionProyectoId <= 0)
+            {
+                errorMessage = "Seleccioná un proyecto.";
+                return;
+            }
 
-        var usuarioId = await ObtenerUsuarioActualIdAsync();
+            var hoy = DateOnly.FromDateTime(DateTime.Now);
+            if (accionFechaTraslado > hoy)
+            {
+                errorMessage = "La fecha de traslado no puede ser futura.";
+                return;
+            }
 
-        Db.Movimientos.Add(new Movimiento
-        {
-            ActivoId = activo.Id,
-            ProyectoId = accionProyectoId,
-            TipoMovimiento = TipoMovimiento.Asignacion,
-            EstadoAnterior = EstadoActivo.Disponible,
-            EstadoNuevo = EstadoActivo.Asignado,
-            FechaMovimiento = accionFechaTraslado.ToDateTime(TimeOnly.FromDateTime(DateTime.Now)),
-            UsuarioId = usuarioId
-        });
+            var activo = await Db.Activos.FirstOrDefaultAsync(a => a.Id == activoOriginal.Id);
+            if (activo is null || activo.Estado != EstadoActivo.Disponible)
+            {
+                errorMessage = "El activo ya no está disponible para asignar.";
+                filaAccionId = null;
+                await CargarActivosAsync();
+                return;
+            }
 
-        Db.AsignacionesActivoProyecto.Add(new AsignacionActivoProyecto
-        {
-            ActivoId = activo.Id,
-            ProyectoId = accionProyectoId,
-            FechaIngreso = accionFechaTraslado,
-            FechaSalida = null,
-            FechaUltimoCobro = accionFechaTraslado
-        });
+            var usuarioId = await ObtenerUsuarioActualIdAsync();
 
-        activo.Estado = EstadoActivo.Asignado;
-        activo.ProyectoActualId = accionProyectoId;
-
-        await Db.SaveChangesAsync();
-
-        filaAccionId = null;
-        await CargarActivosAsync();
-    }
-
-    private async Task ConfirmarAsignarMasivoAsync()
-    {
-        errorMessage = null;
-
-        if (bulkProyectoId <= 0)
-        {
-            errorMessage = "Seleccioná un proyecto.";
-            return;
-        }
-
-        var hoy = DateOnly.FromDateTime(DateTime.Now);
-        if (bulkFecha > hoy)
-        {
-            errorMessage = "La fecha de traslado no puede ser futura.";
-            return;
-        }
-
-        var idsSeleccionados = seleccionados.ToList();
-        if (idsSeleccionados.Count == 0)
-        {
-            errorMessage = "No hay activos seleccionados.";
-            return;
-        }
-
-        var activosDb = await Db.Activos
-            .Where(a => idsSeleccionados.Contains(a.Id) && a.Estado == EstadoActivo.Disponible)
-            .ToListAsync();
-
-        var usuarioId = await ObtenerUsuarioActualIdAsync();
-
-        foreach (var activo in activosDb)
-        {
             Db.Movimientos.Add(new Movimiento
             {
                 ActivoId = activo.Id,
-                ProyectoId = bulkProyectoId,
+                ProyectoId = accionProyectoId,
                 TipoMovimiento = TipoMovimiento.Asignacion,
                 EstadoAnterior = EstadoActivo.Disponible,
                 EstadoNuevo = EstadoActivo.Asignado,
-                FechaMovimiento = bulkFecha.ToDateTime(TimeOnly.FromDateTime(DateTime.Now)),
+                FechaMovimiento = accionFechaTraslado.ToDateTime(TimeOnly.FromDateTime(DateTime.Now)),
                 UsuarioId = usuarioId
             });
 
             Db.AsignacionesActivoProyecto.Add(new AsignacionActivoProyecto
             {
                 ActivoId = activo.Id,
-                ProyectoId = bulkProyectoId,
-                FechaIngreso = bulkFecha,
+                ProyectoId = accionProyectoId,
+                FechaIngreso = accionFechaTraslado,
                 FechaSalida = null,
-                FechaUltimoCobro = bulkFecha
+                FechaUltimoCobro = accionFechaTraslado
             });
 
             activo.Estado = EstadoActivo.Asignado;
-            activo.ProyectoActualId = bulkProyectoId;
+            activo.ProyectoActualId = accionProyectoId;
+
+            await Db.SaveChangesAsync();
+
+            filaAccionId = null;
+            await CargarActivosAsync();
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+    private async Task ConfirmarAsignarMasivoAsync()
+    {
+        if (procesando)
+        {
+            return;
         }
 
-        await Db.SaveChangesAsync();
-
-        var faltantes = idsSeleccionados.Count - activosDb.Count;
-        seleccionados.Clear();
-        bulkProyectoId = 0;
-        await CargarActivosAsync();
-
-        if (faltantes > 0)
+        procesando = true;
+        try
         {
-            errorMessage = $"{faltantes} activo(s) ya no estaban disponibles y no se asignaron.";
+            errorMessage = null;
+
+            if (bulkProyectoId <= 0)
+            {
+                errorMessage = "Seleccioná un proyecto.";
+                return;
+            }
+
+            var hoy = DateOnly.FromDateTime(DateTime.Now);
+            if (bulkFecha > hoy)
+            {
+                errorMessage = "La fecha de traslado no puede ser futura.";
+                return;
+            }
+
+            var idsSeleccionados = seleccionados.ToList();
+            if (idsSeleccionados.Count == 0)
+            {
+                errorMessage = "No hay activos seleccionados.";
+                return;
+            }
+
+            var activosDb = await Db.Activos
+                .Where(a => idsSeleccionados.Contains(a.Id) && a.Estado == EstadoActivo.Disponible)
+                .ToListAsync();
+
+            var usuarioId = await ObtenerUsuarioActualIdAsync();
+
+            foreach (var activo in activosDb)
+            {
+                Db.Movimientos.Add(new Movimiento
+                {
+                    ActivoId = activo.Id,
+                    ProyectoId = bulkProyectoId,
+                    TipoMovimiento = TipoMovimiento.Asignacion,
+                    EstadoAnterior = EstadoActivo.Disponible,
+                    EstadoNuevo = EstadoActivo.Asignado,
+                    FechaMovimiento = bulkFecha.ToDateTime(TimeOnly.FromDateTime(DateTime.Now)),
+                    UsuarioId = usuarioId
+                });
+
+                Db.AsignacionesActivoProyecto.Add(new AsignacionActivoProyecto
+                {
+                    ActivoId = activo.Id,
+                    ProyectoId = bulkProyectoId,
+                    FechaIngreso = bulkFecha,
+                    FechaSalida = null,
+                    FechaUltimoCobro = bulkFecha
+                });
+
+                activo.Estado = EstadoActivo.Asignado;
+                activo.ProyectoActualId = bulkProyectoId;
+            }
+
+            await Db.SaveChangesAsync();
+
+            var faltantes = idsSeleccionados.Count - activosDb.Count;
+            seleccionados.Clear();
+            bulkProyectoId = 0;
+            await CargarActivosAsync();
+
+            if (faltantes > 0)
+            {
+                errorMessage = $"{faltantes} activo(s) ya no estaban disponibles y no se asignaron.";
+            }
+        }
+        finally
+        {
+            procesando = false;
         }
     }
 
     private async Task ConfirmarCambiarEstadoMasivoAsync()
     {
-        errorMessage = null;
-
-        var idsSeleccionados = seleccionados.ToList();
-        if (idsSeleccionados.Count == 0)
+        if (procesando)
         {
-            errorMessage = "No hay activos seleccionados.";
             return;
         }
 
-        var activosDb = await Db.Activos
-            .Where(a => idsSeleccionados.Contains(a.Id) && a.Estado != bulkNuevoEstado)
-            .ToListAsync();
-
-        var usuarioId = await ObtenerUsuarioActualIdAsync();
-        var observacion = string.IsNullOrWhiteSpace(bulkObservacion) ? null : bulkObservacion.Trim();
-
-        foreach (var activo in activosDb)
+        procesando = true;
+        try
         {
-            Db.Movimientos.Add(new Movimiento
+            errorMessage = null;
+
+            var idsSeleccionados = seleccionados.ToList();
+            if (idsSeleccionados.Count == 0)
             {
-                ActivoId = activo.Id,
-                ProyectoId = activo.ProyectoActualId,
-                TipoMovimiento = TipoMovimiento.CambioDeEstado,
-                EstadoAnterior = activo.Estado,
-                EstadoNuevo = bulkNuevoEstado,
-                FechaMovimiento = DateTime.Now,
-                UsuarioId = usuarioId,
-                Observacion = observacion
-            });
+                errorMessage = "No hay activos seleccionados.";
+                return;
+            }
 
-            activo.Estado = bulkNuevoEstado;
+            var activosDb = await Db.Activos
+                .Where(a => idsSeleccionados.Contains(a.Id) && a.Estado != bulkNuevoEstado)
+                .ToListAsync();
+
+            var usuarioId = await ObtenerUsuarioActualIdAsync();
+            var observacion = string.IsNullOrWhiteSpace(bulkObservacion) ? null : bulkObservacion.Trim();
+
+            foreach (var activo in activosDb)
+            {
+                Db.Movimientos.Add(new Movimiento
+                {
+                    ActivoId = activo.Id,
+                    ProyectoId = activo.ProyectoActualId,
+                    TipoMovimiento = TipoMovimiento.CambioDeEstado,
+                    EstadoAnterior = activo.Estado,
+                    EstadoNuevo = bulkNuevoEstado,
+                    FechaMovimiento = DateTime.Now,
+                    UsuarioId = usuarioId,
+                    Observacion = observacion
+                });
+
+                activo.Estado = bulkNuevoEstado;
+            }
+
+            await Db.SaveChangesAsync();
+
+            var omitidos = idsSeleccionados.Count - activosDb.Count;
+            seleccionados.Clear();
+            bulkObservacion = "";
+            await CargarActivosAsync();
+
+            if (omitidos > 0)
+            {
+                errorMessage = $"{omitidos} activo(s) ya tenían ese estado y se omitieron.";
+            }
         }
-
-        await Db.SaveChangesAsync();
-
-        var omitidos = idsSeleccionados.Count - activosDb.Count;
-        seleccionados.Clear();
-        bulkObservacion = "";
-        await CargarActivosAsync();
-
-        if (omitidos > 0)
+        finally
         {
-            errorMessage = $"{omitidos} activo(s) ya tenían ese estado y se omitieron.";
+            procesando = false;
         }
     }
 
     private async Task ConfirmarEliminarMasivoAsync()
     {
-        errorMessage = null;
-
-        var idsSeleccionados = seleccionados.ToList();
-        if (idsSeleccionados.Count == 0)
+        if (procesando)
         {
-            errorMessage = "No hay activos seleccionados.";
             return;
         }
 
-        var activosDb = await Db.Activos
-            .Where(a => idsSeleccionados.Contains(a.Id) && a.Estado != EstadoActivo.Asignado)
-            .ToListAsync();
-
-        foreach (var activo in activosDb)
+        procesando = true;
+        try
         {
+            errorMessage = null;
+
+            var idsSeleccionados = seleccionados.ToList();
+            if (idsSeleccionados.Count == 0)
+            {
+                errorMessage = "No hay activos seleccionados.";
+                return;
+            }
+
+            var activosDb = await Db.Activos
+                .Where(a => idsSeleccionados.Contains(a.Id) && a.Estado != EstadoActivo.Asignado)
+                .ToListAsync();
+
+            foreach (var activo in activosDb)
+            {
+                var tieneHistorial = await Db.Movimientos.AnyAsync(m => m.ActivoId == activo.Id)
+                    || await Db.AsignacionesActivoProyecto.AnyAsync(a => a.ActivoId == activo.Id)
+                    || await Db.ProformaDetalles.AnyAsync(d => d.ActivoId == activo.Id);
+
+                if (tieneHistorial)
+                {
+                    activo.Eliminado = true;
+                }
+                else
+                {
+                    Db.Activos.Remove(activo);
+                }
+            }
+
+            await Db.SaveChangesAsync();
+
+            var omitidos = idsSeleccionados.Count - activosDb.Count;
+            seleccionados.Clear();
+            await CargarActivosAsync();
+
+            if (omitidos > 0)
+            {
+                errorMessage = $"{omitidos} activo(s) estaban asignados a un proyecto y se omitieron. Retornalos a bodega primero.";
+            }
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+    private async Task ConfirmarRetornarAsync(Activo activoOriginal)
+    {
+        if (procesando)
+        {
+            return;
+        }
+
+        procesando = true;
+        try
+        {
+            errorMessage = null;
+
+            var activo = await Db.Activos.FirstOrDefaultAsync(a => a.Id == activoOriginal.Id);
+            if (activo is null || activo.ProyectoActualId is null)
+            {
+                errorMessage = "El activo no está asignado a ningún proyecto actualmente.";
+                filaAccionId = null;
+                await CargarActivosAsync();
+                return;
+            }
+
+            var hoy = DateOnly.FromDateTime(DateTime.Now);
+            if (accionFechaTraslado > hoy)
+            {
+                errorMessage = "La fecha de retorno no puede ser futura.";
+                return;
+            }
+
+            var proyectoAnteriorId = activo.ProyectoActualId;
+            var estadoAnterior = activo.Estado;
+
+            var asignacionAbierta = await Db.AsignacionesActivoProyecto
+                .Where(a => a.ActivoId == activo.Id && a.FechaSalida == null)
+                .OrderByDescending(a => a.FechaIngreso)
+                .FirstOrDefaultAsync();
+
+            if (asignacionAbierta is not null && accionFechaTraslado < asignacionAbierta.FechaIngreso)
+            {
+                errorMessage = "La fecha de retorno no puede ser anterior a la fecha de ingreso al proyecto.";
+                return;
+            }
+
+            if (asignacionAbierta is not null)
+            {
+                asignacionAbierta.FechaSalida = accionFechaTraslado;
+            }
+
+            var usuarioId = await ObtenerUsuarioActualIdAsync();
+
+            Db.Movimientos.Add(new Movimiento
+            {
+                ActivoId = activo.Id,
+                ProyectoId = proyectoAnteriorId,
+                TipoMovimiento = TipoMovimiento.RetornoABodega,
+                EstadoAnterior = estadoAnterior,
+                EstadoNuevo = EstadoActivo.Disponible,
+                FechaMovimiento = accionFechaTraslado.ToDateTime(TimeOnly.FromDateTime(DateTime.Now)),
+                UsuarioId = usuarioId
+            });
+
+            activo.Estado = EstadoActivo.Disponible;
+            activo.ProyectoActualId = null;
+
+            await Db.SaveChangesAsync();
+
+            filaAccionId = null;
+            await CargarActivosAsync();
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+    private async Task ConfirmarEliminarAsync(Activo activoOriginal)
+    {
+        if (procesando)
+        {
+            return;
+        }
+
+        procesando = true;
+        try
+        {
+            errorMessage = null;
+
+            var activo = await Db.Activos.FirstOrDefaultAsync(a => a.Id == activoOriginal.Id);
+            if (activo is null)
+            {
+                filaAccionId = null;
+                await CargarActivosAsync();
+                return;
+            }
+
+            if (activo.Estado == EstadoActivo.Asignado)
+            {
+                errorMessage = "No se puede eliminar un activo asignado a un proyecto. Retornalo a bodega primero.";
+                filaAccionId = null;
+                return;
+            }
+
             var tieneHistorial = await Db.Movimientos.AnyAsync(m => m.ActivoId == activo.Id)
                 || await Db.AsignacionesActivoProyecto.AnyAsync(a => a.ActivoId == activo.Id)
                 || await Db.ProformaDetalles.AnyAsync(d => d.ActivoId == activo.Id);
@@ -654,159 +834,71 @@ else
             {
                 Db.Activos.Remove(activo);
             }
-        }
 
-        await Db.SaveChangesAsync();
+            await Db.SaveChangesAsync();
 
-        var omitidos = idsSeleccionados.Count - activosDb.Count;
-        seleccionados.Clear();
-        await CargarActivosAsync();
-
-        if (omitidos > 0)
-        {
-            errorMessage = $"{omitidos} activo(s) estaban asignados a un proyecto y se omitieron. Retornalos a bodega primero.";
-        }
-    }
-
-    private async Task ConfirmarRetornarAsync(Activo activoOriginal)
-    {
-        errorMessage = null;
-
-        var activo = await Db.Activos.FirstOrDefaultAsync(a => a.Id == activoOriginal.Id);
-        if (activo is null || activo.ProyectoActualId is null)
-        {
-            errorMessage = "El activo no está asignado a ningún proyecto actualmente.";
             filaAccionId = null;
             await CargarActivosAsync();
-            return;
         }
-
-        var hoy = DateOnly.FromDateTime(DateTime.Now);
-        if (accionFechaTraslado > hoy)
+        finally
         {
-            errorMessage = "La fecha de retorno no puede ser futura.";
-            return;
+            procesando = false;
         }
-
-        var proyectoAnteriorId = activo.ProyectoActualId;
-        var estadoAnterior = activo.Estado;
-
-        var asignacionAbierta = await Db.AsignacionesActivoProyecto
-            .Where(a => a.ActivoId == activo.Id && a.FechaSalida == null)
-            .OrderByDescending(a => a.FechaIngreso)
-            .FirstOrDefaultAsync();
-
-        if (asignacionAbierta is not null && accionFechaTraslado < asignacionAbierta.FechaIngreso)
-        {
-            errorMessage = "La fecha de retorno no puede ser anterior a la fecha de ingreso al proyecto.";
-            return;
-        }
-
-        if (asignacionAbierta is not null)
-        {
-            asignacionAbierta.FechaSalida = accionFechaTraslado;
-        }
-
-        var usuarioId = await ObtenerUsuarioActualIdAsync();
-
-        Db.Movimientos.Add(new Movimiento
-        {
-            ActivoId = activo.Id,
-            ProyectoId = proyectoAnteriorId,
-            TipoMovimiento = TipoMovimiento.RetornoABodega,
-            EstadoAnterior = estadoAnterior,
-            EstadoNuevo = EstadoActivo.Disponible,
-            FechaMovimiento = accionFechaTraslado.ToDateTime(TimeOnly.FromDateTime(DateTime.Now)),
-            UsuarioId = usuarioId
-        });
-
-        activo.Estado = EstadoActivo.Disponible;
-        activo.ProyectoActualId = null;
-
-        await Db.SaveChangesAsync();
-
-        filaAccionId = null;
-        await CargarActivosAsync();
-    }
-
-    private async Task ConfirmarEliminarAsync(Activo activoOriginal)
-    {
-        errorMessage = null;
-
-        var activo = await Db.Activos.FirstOrDefaultAsync(a => a.Id == activoOriginal.Id);
-        if (activo is null)
-        {
-            filaAccionId = null;
-            await CargarActivosAsync();
-            return;
-        }
-
-        if (activo.Estado == EstadoActivo.Asignado)
-        {
-            errorMessage = "No se puede eliminar un activo asignado a un proyecto. Retornalo a bodega primero.";
-            filaAccionId = null;
-            return;
-        }
-
-        var tieneHistorial = await Db.Movimientos.AnyAsync(m => m.ActivoId == activo.Id)
-            || await Db.AsignacionesActivoProyecto.AnyAsync(a => a.ActivoId == activo.Id)
-            || await Db.ProformaDetalles.AnyAsync(d => d.ActivoId == activo.Id);
-
-        if (tieneHistorial)
-        {
-            activo.Eliminado = true;
-        }
-        else
-        {
-            Db.Activos.Remove(activo);
-        }
-
-        await Db.SaveChangesAsync();
-
-        filaAccionId = null;
-        await CargarActivosAsync();
     }
 
     private async Task ConfirmarCambiarEstadoAsync(Activo activoOriginal)
     {
-        errorMessage = null;
-
-        var activo = await Db.Activos.FirstOrDefaultAsync(a => a.Id == activoOriginal.Id);
-        if (activo is null)
+        if (procesando)
         {
-            errorMessage = "El activo ya no existe.";
+            return;
+        }
+
+        procesando = true;
+        try
+        {
+            errorMessage = null;
+
+            var activo = await Db.Activos.FirstOrDefaultAsync(a => a.Id == activoOriginal.Id);
+            if (activo is null)
+            {
+                errorMessage = "El activo ya no existe.";
+                filaAccionId = null;
+                await CargarActivosAsync();
+                return;
+            }
+
+            if (accionNuevoEstado == activo.Estado)
+            {
+                errorMessage = "Seleccioná un estado distinto al actual.";
+                return;
+            }
+
+            var usuarioId = await ObtenerUsuarioActualIdAsync();
+            var estadoAnterior = activo.Estado;
+
+            Db.Movimientos.Add(new Movimiento
+            {
+                ActivoId = activo.Id,
+                ProyectoId = activo.ProyectoActualId,
+                TipoMovimiento = TipoMovimiento.CambioDeEstado,
+                EstadoAnterior = estadoAnterior,
+                EstadoNuevo = accionNuevoEstado,
+                FechaMovimiento = DateTime.Now,
+                UsuarioId = usuarioId,
+                Observacion = string.IsNullOrWhiteSpace(accionObservacion) ? null : accionObservacion.Trim()
+            });
+
+            activo.Estado = accionNuevoEstado;
+
+            await Db.SaveChangesAsync();
+
             filaAccionId = null;
             await CargarActivosAsync();
-            return;
         }
-
-        if (accionNuevoEstado == activo.Estado)
+        finally
         {
-            errorMessage = "Seleccioná un estado distinto al actual.";
-            return;
+            procesando = false;
         }
-
-        var usuarioId = await ObtenerUsuarioActualIdAsync();
-        var estadoAnterior = activo.Estado;
-
-        Db.Movimientos.Add(new Movimiento
-        {
-            ActivoId = activo.Id,
-            ProyectoId = activo.ProyectoActualId,
-            TipoMovimiento = TipoMovimiento.CambioDeEstado,
-            EstadoAnterior = estadoAnterior,
-            EstadoNuevo = accionNuevoEstado,
-            FechaMovimiento = DateTime.Now,
-            UsuarioId = usuarioId,
-            Observacion = string.IsNullOrWhiteSpace(accionObservacion) ? null : accionObservacion.Trim()
-        });
-
-        activo.Estado = accionNuevoEstado;
-
-        await Db.SaveChangesAsync();
-
-        filaAccionId = null;
-        await CargarActivosAsync();
     }
 
     private static string EtiquetaEstado(EstadoActivo estado) => estado switch
