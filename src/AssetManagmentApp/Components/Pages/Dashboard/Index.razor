@@ -11,23 +11,6 @@
 
 <PageHeader Titulo="Dashboard" />
 
-<AuthorizeView Roles="Admin">
-    <Authorized>
-        <div class="page-card mb-3">
-            <h5>Diagnostico temporal de memoria</h5>
-            <button class="btn btn-sm btn-outline-secondary" @onclick="ForzarGC">Forzar GC y medir</button>
-            @if (memoriaAntesMb is not null)
-            {
-                <p class="mb-0 mt-2">
-                    Antes: <strong>@memoriaAntesMb.Value.ToString("N1") MB</strong> ·
-                    Después: <strong>@memoriaDespuesMb!.Value.ToString("N1") MB</strong> ·
-                    Liberado: <strong>@((memoriaAntesMb.Value - memoriaDespuesMb.Value).ToString("N1")) MB</strong>
-                </p>
-            }
-        </div>
-    </Authorized>
-</AuthorizeView>
-
 <div class="page-card">
 
 <div class="row g-2 mb-4 align-items-end">
@@ -167,18 +150,6 @@
     private List<TotalPorProyecto>? totalesPorProyecto;
     private List<InventarioPorEstado>? inventarioPorEstado;
     private int totalActivosFiltrados;
-
-    private double? memoriaAntesMb;
-    private double? memoriaDespuesMb;
-
-    private void ForzarGC()
-    {
-        memoriaAntesMb = GC.GetTotalMemory(false) / 1024.0 / 1024.0;
-        GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
-        GC.WaitForPendingFinalizers();
-        GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
-        memoriaDespuesMb = GC.GetTotalMemory(false) / 1024.0 / 1024.0;
-    }
 
     protected override async Task OnInitializedAsync()
     {
