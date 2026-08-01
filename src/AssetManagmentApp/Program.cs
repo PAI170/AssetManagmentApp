@@ -42,6 +42,7 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<ProformaService>();
 builder.Services.AddScoped<SidebarState>();
+builder.Services.AddScoped<CurrentUserService>();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

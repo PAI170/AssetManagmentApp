@@ -4,11 +4,10 @@
 @using AssetManagmentApp.Data
 @using AssetManagmentApp.Models
 @using AssetManagmentApp.Services
-@using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @inject AppDbContext Db
 @inject ProformaService ProformaService
-@inject UserManager<ApplicationUser> UserManager
+@inject CurrentUserService CurrentUser
 
 <PageTitle>@(proyecto?.Nombre ?? "Proyecto")</PageTitle>
 
@@ -248,9 +247,6 @@ else
     private List<ProformaLineaPreview>? vistaPrevia;
     private string? generarError;
 
-    [CascadingParameter]
-    private Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthStateTask { get; set; }
-
     protected override async Task OnInitializedAsync()
     {
         await CargarAsync();
@@ -321,15 +317,11 @@ else
     {
         generarError = null;
 
-        var authState = await AuthStateTask!;
-        var email = authState.User.Identity?.Name
-            ?? throw new InvalidOperationException("No hay usuario autenticado.");
-        var usuario = await UserManager.FindByEmailAsync(email)
-            ?? throw new InvalidOperationException("Usuario autenticado no encontrado.");
+        var usuarioId = await CurrentUser.ObtenerUsuarioActualIdAsync();
 
         try
         {
-            await ProformaService.GenerarAsync(Id, fechaCorte, usuario.Id);
+            await ProformaService.GenerarAsync(Id, fechaCorte, usuarioId);
         }
         catch (InvalidOperationException ex)
         {

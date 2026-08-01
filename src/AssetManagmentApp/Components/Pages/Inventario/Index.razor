@@ -3,10 +3,10 @@
 @attribute [Authorize]
 @using AssetManagmentApp.Data
 @using AssetManagmentApp.Models
-@using Microsoft.AspNetCore.Identity
+@using AssetManagmentApp.Services
 @using Microsoft.EntityFrameworkCore
 @inject AppDbContext Db
-@inject UserManager<ApplicationUser> UserManager
+@inject CurrentUserService CurrentUser
 
 <PageTitle>Inventario</PageTitle>
 
@@ -300,9 +300,6 @@ else
     private EstadoActivo bulkNuevoEstado;
     private string bulkObservacion = "";
 
-    [CascadingParameter]
-    private Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthStateTask { get; set; }
-
     protected override async Task OnInitializedAsync()
     {
         tiposEquipo = await Db.TiposEquipo.AsNoTracking().Where(t => !t.Eliminado).OrderBy(t => t.Nombre).ToListAsync();
@@ -442,16 +439,6 @@ else
         errorMessage = null;
     }
 
-    private async Task<int> ObtenerUsuarioActualIdAsync()
-    {
-        var authState = await AuthStateTask!;
-        var email = authState.User.Identity?.Name
-            ?? throw new InvalidOperationException("No hay usuario autenticado.");
-        var user = await UserManager.FindByEmailAsync(email)
-            ?? throw new InvalidOperationException("Usuario autenticado no encontrado.");
-        return user.Id;
-    }
-
     private async Task ConfirmarAsignarAsync(Activo activoOriginal)
     {
         if (procesando)
@@ -486,7 +473,7 @@ else
                 return;
             }
 
-            var usuarioId = await ObtenerUsuarioActualIdAsync();
+            var usuarioId = await CurrentUser.ObtenerUsuarioActualIdAsync();
 
             Db.Movimientos.Add(new Movimiento
             {
@@ -559,7 +546,7 @@ else
                 .Where(a => idsSeleccionados.Contains(a.Id) && a.Estado == EstadoActivo.Disponible)
                 .ToListAsync();
 
-            var usuarioId = await ObtenerUsuarioActualIdAsync();
+            var usuarioId = await CurrentUser.ObtenerUsuarioActualIdAsync();
 
             foreach (var activo in activosDb)
             {
@@ -629,7 +616,7 @@ else
                 .Where(a => idsSeleccionados.Contains(a.Id) && a.Estado != bulkNuevoEstado)
                 .ToListAsync();
 
-            var usuarioId = await ObtenerUsuarioActualIdAsync();
+            var usuarioId = await CurrentUser.ObtenerUsuarioActualIdAsync();
             var observacion = string.IsNullOrWhiteSpace(bulkObservacion) ? null : bulkObservacion.Trim();
 
             foreach (var activo in activosDb)
@@ -786,7 +773,7 @@ else
                 asignacionAbierta.FechaSalida = accionFechaTraslado;
             }
 
-            var usuarioId = await ObtenerUsuarioActualIdAsync();
+            var usuarioId = await CurrentUser.ObtenerUsuarioActualIdAsync();
 
             Db.Movimientos.Add(new Movimiento
             {
@@ -893,7 +880,7 @@ else
                 return;
             }
 
-            var usuarioId = await ObtenerUsuarioActualIdAsync();
+            var usuarioId = await CurrentUser.ObtenerUsuarioActualIdAsync();
             var estadoAnterior = activo.Estado;
 
             Db.Movimientos.Add(new Movimiento
