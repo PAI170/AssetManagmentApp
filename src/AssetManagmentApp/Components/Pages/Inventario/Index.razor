@@ -691,13 +691,27 @@ else
                 .Where(a => idsSeleccionados.Contains(a.Id) && a.Estado != EstadoActivo.Asignado)
                 .ToListAsync();
 
+            var idsCandidatos = activosDb.Select(a => a.Id).ToList();
+            var idsConHistorial = (await Db.Movimientos
+                    .Where(m => idsCandidatos.Contains(m.ActivoId))
+                    .Select(m => m.ActivoId)
+                    .Distinct()
+                    .ToListAsync())
+                .Concat(await Db.AsignacionesActivoProyecto
+                    .Where(a => idsCandidatos.Contains(a.ActivoId))
+                    .Select(a => a.ActivoId)
+                    .Distinct()
+                    .ToListAsync())
+                .Concat(await Db.ProformaDetalles
+                    .Where(d => idsCandidatos.Contains(d.ActivoId))
+                    .Select(d => d.ActivoId)
+                    .Distinct()
+                    .ToListAsync())
+                .ToHashSet();
+
             foreach (var activo in activosDb)
             {
-                var tieneHistorial = await Db.Movimientos.AnyAsync(m => m.ActivoId == activo.Id)
-                    || await Db.AsignacionesActivoProyecto.AnyAsync(a => a.ActivoId == activo.Id)
-                    || await Db.ProformaDetalles.AnyAsync(d => d.ActivoId == activo.Id);
-
-                if (tieneHistorial)
+                if (idsConHistorial.Contains(activo.Id))
                 {
                     activo.Eliminado = true;
                 }

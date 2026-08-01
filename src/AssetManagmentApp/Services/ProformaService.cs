@@ -9,6 +9,7 @@ public class ProformaService(AppDbContext db)
     public async Task<List<ProformaLineaPreview>> CalcularDetalleAsync(int proyectoId, DateOnly fechaCorte)
     {
         var asignaciones = await db.AsignacionesActivoProyecto
+            .AsNoTracking()
             .Include(a => a.Activo).ThenInclude(a => a.TipoEquipo)
             .Where(a => a.ProyectoId == proyectoId
                 && a.FechaUltimoCobro < fechaCorte
@@ -22,6 +23,7 @@ public class ProformaService(AppDbContext db)
 
         var tipoEquipoIds = asignaciones.Select(a => a.Activo.TipoEquipoId).Distinct().ToList();
         var historialesPorTipo = (await db.HistorialPreciosTipoEquipo
+                .AsNoTracking()
                 .Where(h => tipoEquipoIds.Contains(h.TipoEquipoId))
                 .ToListAsync())
             .GroupBy(h => h.TipoEquipoId)
