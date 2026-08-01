@@ -1,0 +1,12 @@
+<div class="page-card mb-3">
+    <h1 class="mb-0">@Titulo</h1>
+    @ChildContent
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Titulo { get; set; } = string.Empty;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

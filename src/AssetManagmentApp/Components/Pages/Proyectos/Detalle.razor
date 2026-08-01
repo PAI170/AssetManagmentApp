@@ -17,15 +17,14 @@
 }
 else
 {
-    <div class="page-card mb-3">
-        <h1 class="mb-0">@proyecto.Nombre</h1>
+    <PageHeader Titulo="@proyecto.Nombre">
         <p class="text-muted mb-1">@proyecto.Direccion</p>
         <p class="mb-0">
             Ingeniero a cargo: <strong>@proyecto.IngenieroACargo</strong> ·
             Estado: <strong>@proyecto.Estado</strong> ·
             Creado: @proyecto.FechaCreacion.ToString("dd/MM/yyyy")
         </p>
-    </div>
+    </PageHeader>
 
     <div class="page-card">
 
@@ -115,10 +114,7 @@ else
         </Authorized>
     </AuthorizeView>
 
-    @if (generarError is not null)
-    {
-        <div class="alert alert-danger">@generarError</div>
-    }
+    <AlertBox Mensaje="@generarError" />
 
     @if (mostrandoGenerar)
     {

@@ -11,16 +11,11 @@
 
 <PageTitle>Nuevo Activo</PageTitle>
 
-<div class="page-card mb-3">
-    <h1 class="mb-0">Nuevo Activo</h1>
-</div>
+<PageHeader Titulo="Nuevo Activo" />
 
 <div class="page-card">
 
-@if (errorMessage is not null)
-{
-    <div class="alert alert-danger">@errorMessage</div>
-}
+<AlertBox Mensaje="@errorMessage" />
 
 <EditForm Model="nuevoActivo" OnValidSubmit="CrearActivoAsync" class="card card-body" style="max-width: 480px;">
     <DataAnnotationsValidator />

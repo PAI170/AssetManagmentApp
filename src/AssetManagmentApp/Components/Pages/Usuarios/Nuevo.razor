@@ -9,16 +9,11 @@
 
 <PageTitle>Nuevo Usuario</PageTitle>
 
-<div class="page-card mb-3">
-    <h1 class="mb-0">Nuevo Usuario</h1>
-</div>
+<PageHeader Titulo="Nuevo Usuario" />
 
 <div class="page-card">
 
-@if (errorMessage is not null)
-{
-    <div class="alert alert-danger">@errorMessage</div>
-}
+<AlertBox Mensaje="@errorMessage" />
 
 <EditForm Model="nuevoUsuario" OnValidSubmit="CrearUsuarioAsync" class="card card-body" style="max-width: 480px;">
     <DataAnnotationsValidator />

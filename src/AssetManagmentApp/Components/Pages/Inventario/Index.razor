@@ -10,16 +10,11 @@
 
 <PageTitle>Inventario</PageTitle>
 
-<div class="page-card mb-3">
-    <h1 class="mb-0">Inventario</h1>
-</div>
+<PageHeader Titulo="Inventario" />
 
 <div class="page-card">
 
-@if (errorMessage is not null)
-{
-    <div class="alert alert-danger">@errorMessage</div>
-}
+<AlertBox Mensaje="@errorMessage" />
 
 <div class="row g-2 mb-3 align-items-end">
     <div class="col-auto">

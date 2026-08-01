@@ -10,20 +10,12 @@
 
 <PageTitle>Usuarios</PageTitle>
 
-<div class="page-card mb-3">
-    <h1 class="mb-0">Usuarios</h1>
-</div>
+<PageHeader Titulo="Usuarios" />
 
 <div class="page-card">
 
-@if (mensaje is not null)
-{
-    <div class="alert alert-success">@mensaje</div>
-}
-@if (errorMessage is not null)
-{
-    <div class="alert alert-danger">@errorMessage</div>
-}
+<AlertBox Mensaje="@mensaje" Tipo="success" />
+<AlertBox Mensaje="@errorMessage" />
 
 @if (usuarios is null)
 {

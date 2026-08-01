@@ -8,20 +8,12 @@
 
 <PageTitle>Editar Activo</PageTitle>
 
-<div class="page-card mb-3">
-    <h1 class="mb-0">Editar Activo</h1>
-</div>
+<PageHeader Titulo="Editar Activo" />
 
 <div class="page-card">
 
-@if (errorMessage is not null)
-{
-    <div class="alert alert-danger">@errorMessage</div>
-}
-@if (mensaje is not null)
-{
-    <div class="alert alert-success">@mensaje</div>
-}
+<AlertBox Mensaje="@errorMessage" />
+<AlertBox Mensaje="@mensaje" Tipo="success" />
 
 <div class="row g-2 mb-3 align-items-end">
     <div class="col-auto">

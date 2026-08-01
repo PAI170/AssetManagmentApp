@@ -8,16 +8,11 @@
 
 <PageTitle>Tipo de Equipo</PageTitle>
 
-<div class="page-card mb-3">
-    <h1 class="mb-0">Tipo de Equipo</h1>
-</div>
+<PageHeader Titulo="Tipo de Equipo" />
 
 <div class="page-card">
 
-@if (errorMessage is not null)
-{
-    <div class="alert alert-danger">@errorMessage</div>
-}
+<AlertBox Mensaje="@errorMessage" />
 
 @if (tipos is null)
 {
