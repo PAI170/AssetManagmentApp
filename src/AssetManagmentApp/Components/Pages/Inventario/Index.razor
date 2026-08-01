@@ -512,13 +512,13 @@ else
             activo.ProyectoActualId = accionProyectoId;
 
             await Db.SaveChangesAsync();
-            Db.ChangeTracker.Clear();
 
             filaAccionId = null;
             await CargarActivosAsync();
         }
         finally
         {
+            Db.ChangeTracker.Clear();
             procesando = false;
         }
     }
@@ -588,7 +588,6 @@ else
             }
 
             await Db.SaveChangesAsync();
-            Db.ChangeTracker.Clear();
 
             var faltantes = idsSeleccionados.Count - activosDb.Count;
             seleccionados.Clear();
@@ -602,6 +601,7 @@ else
         }
         finally
         {
+            Db.ChangeTracker.Clear();
             procesando = false;
         }
     }
@@ -650,7 +650,6 @@ else
             }
 
             await Db.SaveChangesAsync();
-            Db.ChangeTracker.Clear();
 
             var omitidos = idsSeleccionados.Count - activosDb.Count;
             seleccionados.Clear();
@@ -664,6 +663,7 @@ else
         }
         finally
         {
+            Db.ChangeTracker.Clear();
             procesando = false;
         }
     }
@@ -722,7 +722,6 @@ else
             }
 
             await Db.SaveChangesAsync();
-            Db.ChangeTracker.Clear();
 
             var omitidos = idsSeleccionados.Count - activosDb.Count;
             seleccionados.Clear();
@@ -735,6 +734,7 @@ else
         }
         finally
         {
+            Db.ChangeTracker.Clear();
             procesando = false;
         }
     }
@@ -803,13 +803,13 @@ else
             activo.ProyectoActualId = null;
 
             await Db.SaveChangesAsync();
-            Db.ChangeTracker.Clear();
 
             filaAccionId = null;
             await CargarActivosAsync();
         }
         finally
         {
+            Db.ChangeTracker.Clear();
             procesando = false;
         }
     }
@@ -855,13 +855,13 @@ else
             }
 
             await Db.SaveChangesAsync();
-            Db.ChangeTracker.Clear();
 
             filaAccionId = null;
             await CargarActivosAsync();
         }
         finally
         {
+            Db.ChangeTracker.Clear();
             procesando = false;
         }
     }
@@ -911,13 +911,13 @@ else
             activo.Estado = accionNuevoEstado;
 
             await Db.SaveChangesAsync();
-            Db.ChangeTracker.Clear();
 
             filaAccionId = null;
             await CargarActivosAsync();
         }
         finally
         {
+            Db.ChangeTracker.Clear();
             procesando = false;
         }
     }
