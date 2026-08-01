@@ -28,7 +28,7 @@
             <option value="">Todos</option>
             @foreach (var estado in Enum.GetValues<EstadoActivo>())
             {
-                <option value="@estado">@EtiquetaEstado(estado)</option>
+                <option value="@estado">@estado.Etiqueta()</option>
             }
         </select>
     </div>
@@ -107,7 +107,7 @@
                         <select class="form-select form-select-sm" @bind="bulkNuevoEstado">
                             @foreach (var estado in Enum.GetValues<EstadoActivo>())
                             {
-                                <option value="@estado">@EtiquetaEstado(estado)</option>
+                                <option value="@estado">@estado.Etiqueta()</option>
                             }
                         </select>
                     </div>
@@ -170,7 +170,7 @@ else
                     </td>
                     <td>@activo.Placa</td>
                     <td>@activo.TipoEquipo.Nombre</td>
-                    <td>@EtiquetaEstado(activo.Estado)</td>
+                    <td>@activo.Estado.Etiqueta()</td>
                     <td>@(activo.ProyectoActual?.Nombre ?? "Bodega")</td>
                     <td>@activo.FechaRegistro.ToString("dd/MM/yyyy")</td>
                     <td>
@@ -221,13 +221,13 @@ else
                                             <select class="form-select form-select-sm" @bind="accionNuevoEstado">
                                                 @foreach (var estado in Enum.GetValues<EstadoActivo>())
                                                 {
-                                                    <option value="@estado">@EtiquetaEstado(estado)</option>
+                                                    <option value="@estado">@estado.Etiqueta()</option>
                                                 }
                                             </select>
                                             <input class="form-control form-control-sm" placeholder="Observación" @bind="accionObservacion" />
                                         </div>
                                         <div class="small border rounded px-2 py-1">
-                                            ¿Cambiar estado de "@activo.Placa" a "@EtiquetaEstado(accionNuevoEstado)"?
+                                            ¿Cambiar estado de "@activo.Placa" a "@accionNuevoEstado.Etiqueta()"?
                                         </div>
                                         <div class="d-flex gap-1">
                                             <button class="btn btn-sm btn-success" disabled="@procesando" @onclick="() => ConfirmarCambiarEstadoAsync(activo)">Confirmar</button>
@@ -921,13 +921,4 @@ else
             procesando = false;
         }
     }
-
-    private static string EtiquetaEstado(EstadoActivo estado) => estado switch
-    {
-        EstadoActivo.Disponible => "Disponible",
-        EstadoActivo.Asignado => "Asignado",
-        EstadoActivo.EnReparacion => "En Reparación",
-        EstadoActivo.Danado => "Dañado",
-        _ => estado.ToString()
-    };
 }

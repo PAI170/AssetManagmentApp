@@ -13,6 +13,23 @@
     <h1 class="mb-0">Dashboard</h1>
 </div>
 
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        <div class="page-card mb-3">
+            <h5>Diagnostico temporal de memoria</h5>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="ForzarGC">Forzar GC y medir</button>
+            @if (memoriaAntesMb is not null)
+            {
+                <p class="mb-0 mt-2">
+                    Antes: <strong>@memoriaAntesMb.Value.ToString("N1") MB</strong> ·
+                    Después: <strong>@memoriaDespuesMb!.Value.ToString("N1") MB</strong> ·
+                    Liberado: <strong>@((memoriaAntesMb.Value - memoriaDespuesMb.Value).ToString("N1")) MB</strong>
+                </p>
+            }
+        </div>
+    </Authorized>
+</AuthorizeView>
+
 <div class="page-card">
 
 <div class="row g-2 mb-4 align-items-end">
@@ -48,7 +65,7 @@
             <option value="">Todos</option>
             @foreach (var estado in Enum.GetValues<EstadoActivo>())
             {
-                <option value="@estado">@EtiquetaEstado(estado)</option>
+                <option value="@estado">@estado.Etiqueta()</option>
             }
         </select>
     </div>
@@ -124,7 +141,7 @@
                 var porcentaje = totalActivosFiltrados == 0 ? 0 : (double)fila.Cantidad / totalActivosFiltrados * 100;
                 <div class="mb-2">
                     <div class="d-flex justify-content-between">
-                        <span>@EtiquetaEstado(fila.Estado)</span>
+                        <span>@fila.Estado.Etiqueta()</span>
                         <span>@fila.Cantidad (@porcentaje.ToString("N1")%)</span>
                     </div>
                     <div class="progress" style="height: 8px;">
@@ -152,6 +169,18 @@
     private List<TotalPorProyecto>? totalesPorProyecto;
     private List<InventarioPorEstado>? inventarioPorEstado;
     private int totalActivosFiltrados;
+
+    private double? memoriaAntesMb;
+    private double? memoriaDespuesMb;
+
+    private void ForzarGC()
+    {
+        memoriaAntesMb = GC.GetTotalMemory(false) / 1024.0 / 1024.0;
+        GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+        GC.WaitForPendingFinalizers();
+        GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+        memoriaDespuesMb = GC.GetTotalMemory(false) / 1024.0 / 1024.0;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -234,15 +263,6 @@ var totalesCrudos = await proformasQuery
         filtroHasta = null;
         await CargarDatosAsync();
     }
-
-    private static string EtiquetaEstado(EstadoActivo estado) => estado switch
-    {
-        EstadoActivo.Disponible => "Disponible",
-        EstadoActivo.Asignado => "Asignado",
-        EstadoActivo.EnReparacion => "En Reparación",
-        EstadoActivo.Danado => "Dañado",
-        _ => estado.ToString()
-    };
 
     private static string ClaseColorEstado(EstadoActivo estado) => estado switch
     {

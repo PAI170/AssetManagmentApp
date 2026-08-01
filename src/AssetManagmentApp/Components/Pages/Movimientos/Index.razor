@@ -60,7 +60,7 @@
             <option value="">Todos</option>
             @foreach (var tipo in Enum.GetValues<TipoMovimiento>())
             {
-                <option value="@tipo">@EtiquetaTipoMovimiento(tipo)</option>
+                <option value="@tipo">@tipo.Etiqueta()</option>
             }
         </select>
     </div>
@@ -111,7 +111,7 @@ else
                     <td>@mov.Activo.Placa</td>
                     <td>@mov.Activo.TipoEquipo.Nombre</td>
                     <td>@(mov.Proyecto?.Nombre ?? "Bodega")</td>
-                    <td>@EtiquetaTipoMovimiento(mov.TipoMovimiento)</td>
+                    <td>@mov.TipoMovimiento.Etiqueta()</td>
                     <td>@mov.EstadoAnterior</td>
                     <td>@mov.EstadoNuevo</td>
                     <td>@mov.Usuario.Nombre</td>
@@ -201,12 +201,4 @@ else
         filtroHasta = null;
         await CargarMovimientosAsync();
     }
-
-    private static string EtiquetaTipoMovimiento(TipoMovimiento tipo) => tipo switch
-    {
-        TipoMovimiento.Asignacion => "Asignación",
-        TipoMovimiento.RetornoABodega => "Retorno a bodega",
-        TipoMovimiento.CambioDeEstado => "Cambio de estado",
-        _ => tipo.ToString()
-    };
 }

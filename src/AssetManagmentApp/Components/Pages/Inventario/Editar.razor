@@ -74,7 +74,7 @@ else
                                     }
                                 </InputSelect>
                             </td>
-                            <td>@activo.Estado</td>
+                            <td>@activo.Estado.Etiqueta()</td>
                             <td>
                                 <button class="btn btn-sm btn-success" @onclick="() => GuardarAsync(activo)">Guardar</button>
                                 <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
@@ -84,7 +84,7 @@ else
                         {
                             <td>@activo.Placa</td>
                             <td>@activo.TipoEquipo.Nombre</td>
-                            <td>@activo.Estado</td>
+                            <td>@activo.Estado.Etiqueta()</td>
                             <td>
                                 <button class="btn btn-sm btn-outline-primary" @onclick="() => IniciarEdicion(activo)">Editar</button>
                             </td>

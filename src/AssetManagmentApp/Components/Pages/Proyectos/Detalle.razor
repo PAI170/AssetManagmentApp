@@ -96,7 +96,7 @@ else
                         <td>@mov.FechaMovimiento.ToString("dd/MM/yyyy HH:mm")</td>
                         <td>@mov.Activo.Placa</td>
                         <td>@mov.Activo.TipoEquipo.Nombre</td>
-                        <td>@EtiquetaTipoMovimiento(mov.TipoMovimiento)</td>
+                        <td>@mov.TipoMovimiento.Etiqueta()</td>
                         <td>@mov.EstadoAnterior</td>
                         <td>@mov.EstadoNuevo</td>
                         <td>@mov.Usuario.Nombre</td>
@@ -347,12 +347,4 @@ else
         await ProformaService.AnularAsync(proforma.Id);
         await CargarAsync();
     }
-
-    private static string EtiquetaTipoMovimiento(TipoMovimiento tipo) => tipo switch
-    {
-        TipoMovimiento.Asignacion => "Asignación",
-        TipoMovimiento.RetornoABodega => "Retorno a bodega",
-        TipoMovimiento.CambioDeEstado => "Cambio de estado",
-        _ => tipo.ToString()
-    };
 }
