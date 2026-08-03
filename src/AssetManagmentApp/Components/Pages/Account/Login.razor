@@ -2,12 +2,22 @@
 @layout AssetManagmentApp.Components.Layout.LoginLayout
 @using System.ComponentModel.DataAnnotations
 @using AssetManagmentApp.Models
+@using AssetManagmentApp.Services
 @using Microsoft.AspNetCore.Identity
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
 @inject NavigationManager NavigationManager
+@inject TurnstileService TurnstileService
+@inject IConfiguration Configuration
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IWebHostEnvironment HostEnvironment
 
 <PageTitle>Iniciar sesión</PageTitle>
+
+@if (!HostEnvironment.IsDevelopment())
+{
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+}
 
 <div class="login-card">
     <img class="login-logo" src="images/logo.png" alt="Control de Equipos" />
@@ -30,6 +40,10 @@
             <label class="form-label">Contraseña</label>
             <InputText type="password" class="form-control" @bind-Value="Input.Password" autocomplete="current-password" />
         </div>
+        @if (!HostEnvironment.IsDevelopment())
+        {
+            <div class="mb-3 cf-turnstile" data-sitekey="@Configuration["Turnstile:SiteKey"]"></div>
+        }
         <button type="submit" class="btn btn-login">Iniciar sesión</button>
     </EditForm>
 
@@ -42,11 +56,25 @@
     [SupplyParameterFromForm]
     private InputModel Input { get; set; } = new();
 
+    [SupplyParameterFromForm(Name = "cf-turnstile-response")]
+    private string? TurnstileToken { get; set; }
+
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
 
     private async Task LoginUserAsync()
     {
+        if (!HostEnvironment.IsDevelopment())
+        {
+            var remoteIp = HttpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
+            var turnstileOk = await TurnstileService.VerificarAsync(TurnstileToken, remoteIp);
+            if (!turnstileOk)
+            {
+                errorMessage = "Verificación de seguridad fallida. Recargá la página e intentá de nuevo.";
+                return;
+            }
+        }
+
         var user = await UserManager.FindByEmailAsync(Input.Email);
         if (user is not null && !user.Activo)
         {

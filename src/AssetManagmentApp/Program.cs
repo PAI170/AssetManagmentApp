@@ -16,6 +16,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, new MariaDbServerVersion(new Version(10, 11, 0))));
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<TurnstileService>();
 
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole<int>>(options =>

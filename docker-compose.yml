@@ -26,6 +26,8 @@ services:
       ConnectionStrings__DefaultConnection: "Server=db;Port=3306;Database=${DB_NAME:-assetmanagementapp};User=${DB_USER:-assetmanagementapp};Password=${DB_PASSWORD};"
       SeedAdmin__Email: ${SEED_ADMIN_EMAIL:-admin@rodcast.local}
       SeedAdmin__Password: ${SEED_ADMIN_PASSWORD}
+      Turnstile__SiteKey: ${TURNSTILE_SITE_KEY}
+      Turnstile__SecretKey: ${TURNSTILE_SECRET_KEY}
     ports:
       - "127.0.0.1:${APP_PORT:-8081}:8080"
     networks:
