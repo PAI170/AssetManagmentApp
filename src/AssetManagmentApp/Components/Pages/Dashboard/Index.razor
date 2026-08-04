@@ -4,8 +4,10 @@
 @attribute [Authorize]
 @using AssetManagmentApp.Data
 @using AssetManagmentApp.Models
+@using AssetManagmentApp.Services
 @using Microsoft.EntityFrameworkCore
 @inject AppDbContext Db
+@inject ProformaService ProformaService
 
 <PageTitle>Dashboard</PageTitle>
 
@@ -51,12 +53,8 @@
         </select>
     </div>
     <div class="col-auto">
-        <label class="form-label">Gastado desde</label>
-        <input type="date" class="form-control" @bind="filtroDesde" />
-    </div>
-    <div class="col-auto">
-        <label class="form-label">Gastado hasta</label>
-        <input type="date" class="form-control" @bind="filtroHasta" />
+        <label class="form-label">Fecha de corte</label>
+        <input type="date" class="form-control" @bind="filtroFechaCorte" />
     </div>
     <div class="col-auto">
         <button class="btn btn-primary" @onclick="AplicarFiltrosAsync">Filtrar</button>
@@ -66,14 +64,15 @@
 
 <div class="row">
     <div class="col-md-6">
-        <h3>Total gastado por proyecto</h3>
+        <h3>Total facturado por proyecto</h3>
+        <p class="text-muted small">Consumo acumulado desde el último corte (última proforma generada) de cada proyecto.</p>
         @if (totalesPorProyecto is null)
         {
             <p><em>Cargando...</em></p>
         }
         else if (totalesPorProyecto.Count == 0)
         {
-            <p><em>No hay proformas que coincidan con el filtro.</em></p>
+            <p><em>No hay consumo pendiente que coincida con el filtro.</em></p>
         }
         else
         {
@@ -82,7 +81,7 @@
                     <thead>
                         <tr>
                             <th>Proyecto</th>
-                            <th class="text-end">Total gastado</th>
+                            <th class="text-end">Total facturado</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -144,8 +143,7 @@
     private string filtroProyectoId = "";
     private string filtroTipoEquipoId = "";
     private string filtroEstado = "";
-    private DateTime? filtroDesde;
-    private DateTime? filtroHasta;
+    private DateTime filtroFechaCorte = DateTime.Now.Date;
 
     private List<TotalPorProyecto>? totalesPorProyecto;
     private List<InventarioPorEstado>? inventarioPorEstado;
@@ -160,36 +158,13 @@
 
     private async Task CargarDatosAsync()
     {
-        var proformasQuery = Db.Proformas
-            .AsNoTracking()
-            .Include(p => p.Proyecto)
-            .Where(p => p.Estado != EstadoProforma.Anulada);
+        var proyectoIdFiltro = int.TryParse(filtroProyectoId, out var proyectoId) ? proyectoId : (int?)null;
+        var fechaCorte = DateOnly.FromDateTime(filtroFechaCorte);
 
-        if (int.TryParse(filtroProyectoId, out var proyectoId))
-        {
-            proformasQuery = proformasQuery.Where(p => p.ProyectoId == proyectoId);
-        }
+        var consumos = await ProformaService.CalcularConsumoPorProyectoAsync(fechaCorte, proyectoIdFiltro);
 
-        if (filtroDesde is not null)
-        {
-            var desde = DateOnly.FromDateTime(filtroDesde.Value);
-            proformasQuery = proformasQuery.Where(p => p.FechaGeneracion >= desde);
-        }
-
-        if (filtroHasta is not null)
-        {
-            var hasta = DateOnly.FromDateTime(filtroHasta.Value);
-            proformasQuery = proformasQuery.Where(p => p.FechaGeneracion <= hasta);
-        }
-
-var totalesCrudos = await proformasQuery
-            .GroupBy(p => p.Proyecto.Nombre)
-            .Select(g => new { Nombre = g.Key, Total = g.Sum(p => p.Total) })
-            .OrderByDescending(g => g.Total)
-            .ToListAsync();
-
-        totalesPorProyecto = totalesCrudos
-            .Select(g => new TotalPorProyecto(g.Nombre, g.Total))
+        totalesPorProyecto = consumos
+            .Select(c => new TotalPorProyecto(c.ProyectoNombre, c.Total))
             .ToList();
 
         var activosQuery = Db.Activos.AsNoTracking().AsQueryable();
@@ -228,8 +203,7 @@ var totalesCrudos = await proformasQuery
         filtroProyectoId = "";
         filtroTipoEquipoId = "";
         filtroEstado = "";
-        filtroDesde = null;
-        filtroHasta = null;
+        filtroFechaCorte = DateTime.Now.Date;
         await CargarDatosAsync();
     }
 

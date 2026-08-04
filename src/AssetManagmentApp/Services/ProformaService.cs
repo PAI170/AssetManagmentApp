@@ -70,6 +70,79 @@ public class ProformaService(AppDbContext db)
         return lineas;
     }
 
+    // Consumo pendiente de facturar por proyecto: lo acumulado desde la FechaUltimoCobro
+    // de cada asignación (es decir, desde el último corte / proforma generada) hasta
+    // fechaCorte. No usa las proformas ya generadas, ya que esas quedan "en cero" tras
+    // el corte (ver GenerarAsync, que avanza FechaUltimoCobro).
+    public async Task<List<ConsumoPorProyecto>> CalcularConsumoPorProyectoAsync(DateOnly fechaCorte, int? proyectoId = null)
+    {
+        var asignacionesQuery = db.AsignacionesActivoProyecto
+            .AsNoTracking()
+            .Include(a => a.Activo).ThenInclude(a => a.TipoEquipo)
+            .Include(a => a.Proyecto)
+            .Where(a => a.FechaUltimoCobro < fechaCorte
+                && (a.FechaSalida == null || a.FechaUltimoCobro < a.FechaSalida));
+
+        if (proyectoId is not null)
+        {
+            asignacionesQuery = asignacionesQuery.Where(a => a.ProyectoId == proyectoId);
+        }
+
+        var asignaciones = await asignacionesQuery.ToListAsync();
+
+        if (asignaciones.Count == 0)
+        {
+            return [];
+        }
+
+        var tipoEquipoIds = asignaciones.Select(a => a.Activo.TipoEquipoId).Distinct().ToList();
+        var historialesPorTipo = (await db.HistorialPreciosTipoEquipo
+                .AsNoTracking()
+                .Where(h => tipoEquipoIds.Contains(h.TipoEquipoId))
+                .ToListAsync())
+            .GroupBy(h => h.TipoEquipoId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(h => h.VigenteDesde).ToList());
+
+        var totalesPorProyecto = new Dictionary<int, (string Nombre, decimal Total)>();
+
+        foreach (var asignacion in asignaciones)
+        {
+            var hastaExclusive = asignacion.FechaSalida is not null && asignacion.FechaSalida.Value < fechaCorte
+                ? asignacion.FechaSalida.Value
+                : fechaCorte;
+
+            if (hastaExclusive <= asignacion.FechaUltimoCobro)
+            {
+                continue;
+            }
+
+            var historial = historialesPorTipo.TryGetValue(asignacion.Activo.TipoEquipoId, out var lista)
+                ? lista
+                : [];
+
+            decimal subtotalAsignacion = 0;
+            foreach (var tramo in PartirPorCambioDePrecio(asignacion.FechaUltimoCobro, hastaExclusive, historial))
+            {
+                var dias = tramo.HastaExclusive.DayNumber - tramo.Desde.DayNumber;
+                subtotalAsignacion += Math.Round(tramo.Precio * dias, 2);
+            }
+
+            if (subtotalAsignacion == 0)
+            {
+                continue;
+            }
+
+            totalesPorProyecto[asignacion.ProyectoId] = totalesPorProyecto.TryGetValue(asignacion.ProyectoId, out var actual)
+                ? (actual.Nombre, actual.Total + subtotalAsignacion)
+                : (asignacion.Proyecto.Nombre, subtotalAsignacion);
+        }
+
+        return totalesPorProyecto
+            .Select(kv => new ConsumoPorProyecto(kv.Key, kv.Value.Nombre, kv.Value.Total))
+            .OrderByDescending(c => c.Total)
+            .ToList();
+    }
+
     public async Task<Proforma> GenerarAsync(int proyectoId, DateOnly fechaCorte, int usuarioId)
     {
         var lineas = await CalcularDetalleAsync(proyectoId, fechaCorte);
