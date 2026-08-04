@@ -92,7 +92,7 @@ app.MapGet("/proformas/{id:int}/pdf", async (int id, AppDbContext db) =>
 {
     var proforma = await db.Proformas
         .Include(p => p.Proyecto)
-        .Include(p => p.Detalles).ThenInclude(d => d.Activo)
+        .Include(p => p.Detalles)
         .FirstOrDefaultAsync(p => p.Id == id);
 
     if (proforma is null)

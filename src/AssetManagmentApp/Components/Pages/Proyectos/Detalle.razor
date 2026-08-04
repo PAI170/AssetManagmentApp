@@ -142,8 +142,8 @@ else
                     <table class="table table-sm table-striped">
                         <thead>
                             <tr>
-                                <th>Placa</th>
                                 <th>Tipo</th>
+                                <th>Cantidad</th>
                                 <th>Desde</th>
                                 <th>Hasta</th>
                                 <th>Días</th>
@@ -152,11 +152,11 @@ else
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var linea in vistaPrevia)
+                            @foreach (var linea in VistaPreviaAgrupada)
                             {
                                 <tr>
-                                    <td>@linea.Placa</td>
                                     <td>@linea.TipoEquipoNombre</td>
+                                    <td>@linea.Cantidad</td>
                                     <td>@linea.PeriodoDesde.ToString("dd/MM/yyyy")</td>
                                     <td>@linea.PeriodoHastaExclusive.AddDays(-1).ToString("dd/MM/yyyy")</td>
                                     <td>@linea.DiasCobrados</td>
@@ -242,6 +242,31 @@ else
     private DateOnly fechaCorte;
     private List<ProformaLineaPreview>? vistaPrevia;
     private string? generarError;
+
+    // La placa es un dato interno del activo; para el cliente alcanza con el tipo de
+    // equipo y la cantidad, así que se agrupan las líneas por tipo + período + precio.
+    private IEnumerable<LineaAgrupada> VistaPreviaAgrupada =>
+        (vistaPrevia ?? [])
+            .GroupBy(l => (l.TipoEquipoNombre, l.PeriodoDesde, l.PeriodoHastaExclusive, l.PrecioPorDiaUsado))
+            .Select(g => new LineaAgrupada(
+                g.Key.TipoEquipoNombre,
+                g.Count(),
+                g.Key.PeriodoDesde,
+                g.Key.PeriodoHastaExclusive,
+                g.First().DiasCobrados,
+                g.Key.PrecioPorDiaUsado,
+                g.Sum(l => l.Subtotal)))
+            .OrderBy(l => l.TipoEquipoNombre)
+            .ThenBy(l => l.PeriodoDesde);
+
+    private record LineaAgrupada(
+        string TipoEquipoNombre,
+        int Cantidad,
+        DateOnly PeriodoDesde,
+        DateOnly PeriodoHastaExclusive,
+        int DiasCobrados,
+        decimal PrecioPorDiaUsado,
+        decimal Subtotal);
 
     protected override async Task OnInitializedAsync()
     {

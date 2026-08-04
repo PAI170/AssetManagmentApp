@@ -58,18 +58,32 @@ public static class ProformaPdfService
 
                         table.Header(header =>
                         {
-                            header.Cell().Text("Placa").Bold();
                             header.Cell().Text("Tipo de equipo").Bold();
+                            header.Cell().AlignRight().Text("Cantidad").Bold();
                             header.Cell().AlignRight().Text("Días").Bold();
                             header.Cell().AlignRight().Text("Precio/día").Bold();
                             header.Cell().AlignRight().Text("Subtotal").Bold();
                             header.Cell().ColumnSpan(5).PaddingTop(3).LineHorizontal(1);
                         });
 
-                        foreach (var linea in proforma.Detalles)
+                        // La placa es un dato interno del activo; al cliente se le muestra
+                        // el tipo de equipo agrupado con la cantidad de unidades facturadas.
+                        var lineasAgrupadas = proforma.Detalles
+                            .GroupBy(d => (d.TipoEquipoNombre, d.DiasCobrados, d.PrecioPorDiaUsado))
+                            .Select(g => new
+                            {
+                                g.Key.TipoEquipoNombre,
+                                Cantidad = g.Count(),
+                                g.Key.DiasCobrados,
+                                g.Key.PrecioPorDiaUsado,
+                                Subtotal = g.Sum(d => d.Subtotal)
+                            })
+                            .OrderBy(l => l.TipoEquipoNombre);
+
+                        foreach (var linea in lineasAgrupadas)
                         {
-                            table.Cell().Text(linea.Activo.Placa);
                             table.Cell().Text(linea.TipoEquipoNombre);
+                            table.Cell().AlignRight().Text(linea.Cantidad.ToString());
                             table.Cell().AlignRight().Text(linea.DiasCobrados.ToString());
                             table.Cell().AlignRight().Text($"₡{linea.PrecioPorDiaUsado:N2}");
                             table.Cell().AlignRight().Text($"₡{linea.Subtotal:N2}");
