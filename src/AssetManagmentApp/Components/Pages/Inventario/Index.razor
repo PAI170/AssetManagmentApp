@@ -303,7 +303,7 @@ else
     private List<TipoEquipo>? tiposEquipo;
     private List<Proyecto>? proyectos;
 
-    private string filtroEstado = "";
+    private string filtroEstado = nameof(EstadoActivo.Disponible);
     private string filtroTipoEquipoId = "";
     private string filtroProyectoId = "";
 
@@ -401,7 +401,7 @@ else
 
     private async Task LimpiarFiltrosAsync()
     {
-        filtroEstado = "";
+        filtroEstado = nameof(EstadoActivo.Disponible);
         filtroTipoEquipoId = "";
         filtroProyectoId = "";
         seleccionados.Clear();
