@@ -114,6 +114,56 @@ a, .btn-link {
     background-color: transparent;
 }
 
+.dashboard-card {
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    padding: 1.25rem 1.5rem;
+    border-top: 4px solid var(--brand-navy);
+}
+
+.dashboard-card.accent-navy {
+    border-top-color: var(--brand-navy);
+}
+
+.dashboard-card.accent-navy-light {
+    border-top-color: var(--brand-navy-light);
+}
+
+.dashboard-card.accent-orange {
+    border-top-color: var(--brand-orange);
+}
+
+.dashboard-card.accent-orange-dark {
+    border-top-color: var(--brand-orange-dark);
+}
+
+.dashboard-card-title {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--brand-navy);
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-card-subtitle {
+    color: #6c757d;
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+}
+
+.dashboard-stat {
+    font-weight: 700;
+    font-size: 2rem;
+    color: var(--brand-navy);
+    line-height: 1.1;
+    margin-bottom: 0.25rem;
+}
+
+.dashboard-mini-table th,
+.dashboard-mini-table td {
+    font-size: 0.85rem;
+}
+
 .table-responsive .table th,
 .table-responsive .table td {
     white-space: nowrap;

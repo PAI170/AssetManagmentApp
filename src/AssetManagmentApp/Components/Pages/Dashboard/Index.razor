@@ -13,173 +13,143 @@
 
 <PageHeader Titulo="Dashboard" />
 
-<div class="page-card">
-
-<div class="row g-2 mb-4 align-items-end">
-    <div class="col-auto">
-        <label class="form-label">Proyecto</label>
-        <select class="form-select" @bind="filtroProyectoId">
-            <option value="">Todos</option>
-            @if (proyectos is not null)
-            {
-                @foreach (var proyecto in proyectos)
+@if (cargando)
+{
+    <div class="page-card"><p><em>Cargando...</em></p></div>
+}
+else
+{
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <div class="dashboard-card accent-orange h-100">
+                <div class="dashboard-card-title">Total facturado por proyecto</div>
+                <div class="dashboard-stat">₡@totalFacturado.ToString("N2")</div>
+                <p class="dashboard-card-subtitle">Consumo acumulado desde el último corte (última proforma generada) de cada proyecto.</p>
+                @if (totalesPorProyecto is { Count: > 0 })
                 {
-                    <option value="@proyecto.Id">@proyecto.Nombre</option>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-borderless dashboard-mini-table mb-0">
+                            <tbody>
+                                @foreach (var fila in totalesPorProyecto)
+                                {
+                                    <tr>
+                                        <td>@fila.ProyectoNombre</td>
+                                        <td class="text-end">₡@fila.Total.ToString("N2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 }
-            }
-        </select>
-    </div>
-    <div class="col-auto">
-        <label class="form-label">Tipo de equipo</label>
-        <select class="form-select" @bind="filtroTipoEquipoId">
-            <option value="">Todos</option>
-            @if (tiposEquipo is not null)
-            {
-                @foreach (var tipo in tiposEquipo)
+                else
                 {
-                    <option value="@tipo.Id">@tipo.Nombre</option>
+                    <p class="text-muted small mb-0">No hay consumo pendiente de facturar.</p>
                 }
-            }
-        </select>
-    </div>
-    <div class="col-auto">
-        <label class="form-label">Estado</label>
-        <select class="form-select" @bind="filtroEstado">
-            <option value="">Todos</option>
-            @foreach (var estado in Enum.GetValues<EstadoActivo>())
-            {
-                <option value="@estado">@estado.Etiqueta()</option>
-            }
-        </select>
-    </div>
-    <div class="col-auto">
-        <label class="form-label">Fecha de corte</label>
-        <input type="date" class="form-control" @bind="filtroFechaCorte" />
-    </div>
-    <div class="col-auto">
-        <button class="btn btn-primary" @onclick="AplicarFiltrosAsync">Filtrar</button>
-        <button class="btn btn-outline-secondary" @onclick="LimpiarFiltrosAsync">Limpiar</button>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-6">
-        <h3>Total facturado por proyecto</h3>
-        <p class="text-muted small">Consumo acumulado desde el último corte (última proforma generada) de cada proyecto.</p>
-        @if (totalesPorProyecto is null)
-        {
-            <p><em>Cargando...</em></p>
-        }
-        else if (totalesPorProyecto.Count == 0)
-        {
-            <p><em>No hay consumo pendiente que coincida con el filtro.</em></p>
-        }
-        else
-        {
-            <div class="table-responsive">
-                <table class="table table-sm table-striped">
-                    <thead>
-                        <tr>
-                            <th>Proyecto</th>
-                            <th class="text-end">Total facturado</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var fila in totalesPorProyecto)
-                        {
-                            <tr>
-                                <td>@fila.ProyectoNombre</td>
-                                <td class="text-end">₡@fila.Total.ToString("N2")</td>
-                            </tr>
-                        }
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <th>Total</th>
-                            <th class="text-end">₡@totalesPorProyecto.Sum(f => f.Total).ToString("N2")</th>
-                        </tr>
-                    </tfoot>
-                </table>
             </div>
-        }
+        </div>
+
+        <div class="col-md-6">
+            <div class="dashboard-card accent-navy-light h-100">
+                <div class="dashboard-card-title">Inventario por estado</div>
+                @if (totalActivos == 0)
+                {
+                    <p class="text-muted small mb-0">No hay activos registrados.</p>
+                }
+                else
+                {
+                    <p class="dashboard-card-subtitle mt-0">Total: @totalActivos activos</p>
+                    @foreach (var fila in inventarioPorEstado!)
+                    {
+                        var porcentaje = totalActivos == 0 ? 0 : (double)fila.Cantidad / totalActivos * 100;
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between">
+                                <span>@fila.Estado.Etiqueta()</span>
+                                <span>@fila.Cantidad (@porcentaje.ToString("N1")%)</span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar @ClaseColorEstado(fila.Estado)" style="width: @(porcentaje.ToString("N1", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
     </div>
 
-    <div class="col-md-6">
-        <h3>Inventario por estado</h3>
-        @if (inventarioPorEstado is null)
-        {
-            <p><em>Cargando...</em></p>
-        }
-        else if (totalActivosFiltrados == 0)
-        {
-            <p><em>No hay activos que coincidan con el filtro.</em></p>
-        }
-        else
-        {
-            @foreach (var fila in inventarioPorEstado)
-            {
-                var porcentaje = totalActivosFiltrados == 0 ? 0 : (double)fila.Cantidad / totalActivosFiltrados * 100;
-                <div class="mb-2">
-                    <div class="d-flex justify-content-between">
-                        <span>@fila.Estado.Etiqueta()</span>
-                        <span>@fila.Cantidad (@porcentaje.ToString("N1")%)</span>
-                    </div>
-                    <div class="progress" style="height: 8px;">
-                        <div class="progress-bar @ClaseColorEstado(fila.Estado)" style="width: @(porcentaje.ToString("N1", System.Globalization.CultureInfo.InvariantCulture))%"></div>
-                    </div>
-                </div>
-            }
-            <p class="text-muted mt-2">Total: @totalActivosFiltrados activos</p>
-        }
-    </div>
-</div>
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <div class="dashboard-card accent-navy h-100">
+                <div class="dashboard-card-title">Total de proyectos</div>
+                <div class="dashboard-stat">@totalProyectos</div>
+                <p class="dashboard-card-subtitle mb-0">@proyectosActivos activo(s) &middot; @proyectosCerrados cerrado(s)</p>
+            </div>
+        </div>
 
-</div>
+        <div class="col-md-6">
+            <div class="dashboard-card accent-orange-dark h-100">
+                <div class="dashboard-card-title">Últimos movimientos</div>
+                @if (ultimosMovimientos is { Count: > 0 })
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm dashboard-mini-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Activo</th>
+                                    <th>Proyecto</th>
+                                    <th>Movimiento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var mov in ultimosMovimientos)
+                                {
+                                    <tr>
+                                        <td>@mov.FechaMovimiento.ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td>@mov.Activo.Placa</td>
+                                        <td>@(mov.Proyecto?.Nombre ?? "Bodega")</td>
+                                        <td>@mov.TipoMovimiento.Etiqueta()</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted small mb-0">No hay movimientos registrados.</p>
+                }
+            </div>
+        </div>
+    </div>
+}
 
 @code {
-    private List<Proyecto>? proyectos;
-    private List<TipoEquipo>? tiposEquipo;
-
-    private string filtroProyectoId = "";
-    private string filtroTipoEquipoId = "";
-    private string filtroEstado = "";
-    private DateTime filtroFechaCorte = DateTime.Now.Date;
+    private bool cargando = true;
 
     private List<TotalPorProyecto>? totalesPorProyecto;
+    private decimal totalFacturado;
+
     private List<InventarioPorEstado>? inventarioPorEstado;
-    private int totalActivosFiltrados;
+    private int totalActivos;
+
+    private int totalProyectos;
+    private int proyectosActivos;
+    private int proyectosCerrados;
+
+    private List<Movimiento>? ultimosMovimientos;
 
     protected override async Task OnInitializedAsync()
     {
-        proyectos = await Db.Proyectos.AsNoTracking().OrderBy(p => p.Nombre).ToListAsync();
-        tiposEquipo = await Db.TiposEquipo.AsNoTracking().OrderBy(t => t.Nombre).ToListAsync();
-        await CargarDatosAsync();
-    }
+        var fechaCorte = DateOnly.FromDateTime(DateTime.Now);
 
-    private async Task CargarDatosAsync()
-    {
-        var proyectoIdFiltro = int.TryParse(filtroProyectoId, out var proyectoId) ? proyectoId : (int?)null;
-        var fechaCorte = DateOnly.FromDateTime(filtroFechaCorte);
-
-        var consumos = await ProformaService.CalcularConsumoPorProyectoAsync(fechaCorte, proyectoIdFiltro);
-
+        var consumos = await ProformaService.CalcularConsumoPorProyectoAsync(fechaCorte);
         totalesPorProyecto = consumos
             .Select(c => new TotalPorProyecto(c.ProyectoNombre, c.Total))
             .ToList();
+        totalFacturado = totalesPorProyecto.Sum(f => f.Total);
 
-        var activosQuery = Db.Activos.AsNoTracking().AsQueryable();
-
-        if (int.TryParse(filtroTipoEquipoId, out var tipoEquipoId))
-        {
-            activosQuery = activosQuery.Where(a => a.TipoEquipoId == tipoEquipoId);
-        }
-
-        if (Enum.TryParse<EstadoActivo>(filtroEstado, out var estadoFiltro))
-        {
-            activosQuery = activosQuery.Where(a => a.Estado == estadoFiltro);
-        }
-
-        var conteosCrudos = await activosQuery
+        var conteosCrudos = await Db.Activos
+            .AsNoTracking()
             .GroupBy(a => a.Estado)
             .Select(g => new { Estado = g.Key, Cantidad = g.Count() })
             .ToListAsync();
@@ -188,23 +158,26 @@
             .Select(g => new InventarioPorEstado(g.Estado, g.Cantidad))
             .ToList();
 
-        totalActivosFiltrados = conteos.Sum(c => c.Cantidad);
+        totalActivos = conteos.Sum(c => c.Cantidad);
 
         inventarioPorEstado = Enum.GetValues<EstadoActivo>()
             .Select(estado => conteos.FirstOrDefault(c => c.Estado == estado) ?? new InventarioPorEstado(estado, 0))
-            .Where(c => c.Cantidad > 0 || string.IsNullOrEmpty(filtroEstado))
             .ToList();
-    }
 
-    private async Task AplicarFiltrosAsync() => await CargarDatosAsync();
+        var proyectos = await Db.Proyectos.AsNoTracking().ToListAsync();
+        totalProyectos = proyectos.Count;
+        proyectosActivos = proyectos.Count(p => p.Estado == EstadoProyecto.Activo);
+        proyectosCerrados = proyectos.Count(p => p.Estado == EstadoProyecto.Cerrado);
 
-    private async Task LimpiarFiltrosAsync()
-    {
-        filtroProyectoId = "";
-        filtroTipoEquipoId = "";
-        filtroEstado = "";
-        filtroFechaCorte = DateTime.Now.Date;
-        await CargarDatosAsync();
+        ultimosMovimientos = await Db.Movimientos
+            .AsNoTracking()
+            .Include(m => m.Activo)
+            .Include(m => m.Proyecto)
+            .OrderByDescending(m => m.FechaMovimiento)
+            .Take(10)
+            .ToListAsync();
+
+        cargando = false;
     }
 
     private static string ClaseColorEstado(EstadoActivo estado) => estado switch
