@@ -7,6 +7,7 @@
 @using Microsoft.EntityFrameworkCore
 @inject AppDbContext Db
 @inject CurrentUserService CurrentUser
+@inject SolicitudCorreccionService SolicitudCorreccion
 
 <PageTitle>Inventario</PageTitle>
 
@@ -238,9 +239,32 @@ else
                                         <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
                                     </div>
                                 }
+                                else if (filaAccionId == activo.Id && filaAccionTipo == "corregir")
+                                {
+                                    <div class="d-flex flex-column gap-1">
+                                        <select class="form-select form-select-sm" @bind="correccionNuevoProyectoId">
+                                            <option value="0">-- Proyecto correcto --</option>
+                                            @if (proyectos is not null)
+                                            {
+                                                @foreach (var proyecto in proyectos.Where(p => p.Id != activo.ProyectoActualId))
+                                                {
+                                                    <option value="@proyecto.Id">@proyecto.Nombre</option>
+                                                }
+                                            }
+                                        </select>
+                                        <input class="form-control form-control-sm" placeholder="Motivo de la corrección" @bind="correccionMotivo" />
+                                        <div class="small border rounded px-2 py-1">
+                                            Esto crea una <strong>solicitud</strong> para mover "@activo.Placa" de "@(activo.ProyectoActual?.Nombre ?? "Bodega")" a "@NombreProyecto(correccionNuevoProyectoId)". Un administrador debe aprobarla antes de aplicarse.
+                                        </div>
+                                        <div class="d-flex gap-1">
+                                            <button class="btn btn-sm btn-success" disabled="@procesando" @onclick="() => ConfirmarCorregirProyectoAsync(activo)">Enviar solicitud</button>
+                                            <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
+                                        </div>
+                                    </div>
+                                }
                                 else
                                 {
-                                    <div class="d-flex gap-1">
+                                    <div class="d-flex gap-1 align-items-center">
                                         @if (activo.Estado == EstadoActivo.Disponible)
                                         {
                                             <button class="btn btn-sm btn-outline-primary" @onclick="() => AbrirAsignar(activo)">Asignar</button>
@@ -253,6 +277,14 @@ else
                                         @if (activo.Estado != EstadoActivo.Asignado)
                                         {
                                             <button class="btn btn-sm btn-outline-danger" @onclick="() => AbrirEliminar(activo)">Eliminar</button>
+                                        }
+                                        @if (activosConSolicitudPendiente.Contains(activo.Id))
+                                        {
+                                            <span class="badge bg-warning text-dark">Corrección pendiente</span>
+                                        }
+                                        else if (activosCorregibles.Contains(activo.Id))
+                                        {
+                                            <button class="btn btn-sm btn-outline-info" @onclick="() => AbrirCorregirProyecto(activo)">Corregir proyecto</button>
                                         }
                                     </div>
                                 }
@@ -287,6 +319,12 @@ else
     private EstadoActivo accionNuevoEstado;
     private string accionObservacion = "";
     private readonly string fechaMaxima = DateOnly.FromDateTime(DateTime.Now).ToString("yyyy-MM-dd");
+
+    private int correccionNuevoProyectoId;
+    private string correccionMotivo = "";
+    private Dictionary<int, int> asignacionIdPorActivo = [];
+    private HashSet<int> activosCorregibles = [];
+    private HashSet<int> activosConSolicitudPendiente = [];
 
     private readonly HashSet<int> seleccionados = [];
     private string bulkAccion = "asignar";
@@ -329,6 +367,32 @@ else
         }
 
         activos = await query.OrderBy(a => a.Placa).ToListAsync();
+
+        var activoIds = activos.Select(a => a.Id).ToList();
+
+        var asignacionesAbiertas = await Db.AsignacionesActivoProyecto
+            .AsNoTracking()
+            .Where(a => activoIds.Contains(a.ActivoId) && a.FechaSalida == null)
+            .ToListAsync();
+
+        asignacionIdPorActivo = asignacionesAbiertas.ToDictionary(a => a.ActivoId, a => a.Id);
+        activosCorregibles = asignacionesAbiertas
+            .Where(a => a.FechaUltimoCobro == a.FechaIngreso)
+            .Select(a => a.ActivoId)
+            .ToHashSet();
+
+        var asignacionIdsAbiertas = asignacionesAbiertas.Select(a => a.Id).ToList();
+        var asignacionIdsConPendiente = (await Db.SolicitudesCorreccion
+                .AsNoTracking()
+                .Where(s => asignacionIdsAbiertas.Contains(s.AsignacionActivoProyectoId) && s.Estado == EstadoSolicitud.Pendiente)
+                .Select(s => s.AsignacionActivoProyectoId)
+                .ToListAsync())
+            .ToHashSet();
+
+        activosConSolicitudPendiente = asignacionesAbiertas
+            .Where(a => asignacionIdsConPendiente.Contains(a.Id))
+            .Select(a => a.ActivoId)
+            .ToHashSet();
     }
 
     private async Task AplicarFiltrosAsync()
@@ -424,6 +488,15 @@ else
     {
         filaAccionId = activo.Id;
         filaAccionTipo = "eliminar";
+        errorMessage = null;
+    }
+
+    private void AbrirCorregirProyecto(Activo activo)
+    {
+        filaAccionId = activo.Id;
+        filaAccionTipo = "corregir";
+        correccionNuevoProyectoId = 0;
+        correccionMotivo = "";
         errorMessage = null;
     }
 
@@ -900,6 +973,55 @@ else
         finally
         {
             Db.ChangeTracker.Clear();
+            procesando = false;
+        }
+    }
+
+    private async Task ConfirmarCorregirProyectoAsync(Activo activoOriginal)
+    {
+        if (procesando)
+        {
+            return;
+        }
+
+        procesando = true;
+        try
+        {
+            errorMessage = null;
+
+            if (correccionNuevoProyectoId <= 0)
+            {
+                errorMessage = "Seleccioná el proyecto correcto.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(correccionMotivo))
+            {
+                errorMessage = "Indicá el motivo de la corrección.";
+                return;
+            }
+
+            if (!asignacionIdPorActivo.TryGetValue(activoOriginal.Id, out var asignacionId))
+            {
+                errorMessage = "Este activo ya no tiene una asignación abierta que se pueda corregir.";
+                filaAccionId = null;
+                await CargarActivosAsync();
+                return;
+            }
+
+            var usuarioId = await CurrentUser.ObtenerUsuarioActualIdAsync();
+
+            await SolicitudCorreccion.CrearAsync(asignacionId, correccionNuevoProyectoId, correccionMotivo, usuarioId);
+
+            filaAccionId = null;
+            await CargarActivosAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
             procesando = false;
         }
     }

@@ -16,6 +16,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AsignacionActivoProyecto> AsignacionesActivoProyecto => Set<AsignacionActivoProyecto>();
     public DbSet<Proforma> Proformas => Set<Proforma>();
     public DbSet<ProformaDetalle> ProformaDetalles => Set<ProformaDetalle>();
+    public DbSet<SolicitudCorreccionAsignacion> SolicitudesCorreccion => Set<SolicitudCorreccionAsignacion>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -100,6 +101,40 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             .WithMany(a => a.DetallesProforma)
             .HasForeignKey(d => d.ActivoId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SolicitudCorreccionAsignacion>()
+            .HasOne(s => s.Asignacion)
+            .WithMany()
+            .HasForeignKey(s => s.AsignacionActivoProyectoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SolicitudCorreccionAsignacion>()
+            .HasOne(s => s.ProyectoOriginal)
+            .WithMany()
+            .HasForeignKey(s => s.ProyectoOriginalId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SolicitudCorreccionAsignacion>()
+            .HasOne(s => s.ProyectoNuevo)
+            .WithMany()
+            .HasForeignKey(s => s.ProyectoNuevoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SolicitudCorreccionAsignacion>()
+            .HasOne(s => s.UsuarioSolicita)
+            .WithMany()
+            .HasForeignKey(s => s.UsuarioSolicitaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SolicitudCorreccionAsignacion>()
+            .HasOne(s => s.UsuarioResuelve)
+            .WithMany()
+            .HasForeignKey(s => s.UsuarioResuelveId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SolicitudCorreccionAsignacion>()
+            .Property(s => s.Estado)
+            .HasConversion<string>();
 
         builder.Entity<Proyecto>()
             .Property(p => p.Estado)

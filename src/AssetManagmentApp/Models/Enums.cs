@@ -24,13 +24,21 @@ public enum TipoMovimiento
 {
     Asignacion,
     RetornoABodega,
-    CambioDeEstado
+    CambioDeEstado,
+    CorreccionProyecto
 }
 
 public enum EstadoProforma
 {
     Generada,
     Anulada
+}
+
+public enum EstadoSolicitud
+{
+    Pendiente,
+    Aprobada,
+    Rechazada
 }
 
 public static class EnumEtiquetas
@@ -49,6 +57,15 @@ public static class EnumEtiquetas
         TipoMovimiento.Asignacion => "Asignación",
         TipoMovimiento.RetornoABodega => "Retorno a bodega",
         TipoMovimiento.CambioDeEstado => "Cambio de estado",
+        TipoMovimiento.CorreccionProyecto => "Corrección de proyecto",
         _ => tipo.ToString()
+    };
+
+    public static string Etiqueta(this EstadoSolicitud estado) => estado switch
+    {
+        EstadoSolicitud.Pendiente => "Pendiente",
+        EstadoSolicitud.Aprobada => "Aprobada",
+        EstadoSolicitud.Rechazada => "Rechazada",
+        _ => estado.ToString()
     };
 }

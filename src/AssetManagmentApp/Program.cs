@@ -12,8 +12,15 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' no configurada.");
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(connectionString, new MariaDbServerVersion(new Version(10, 11, 0))));
+void ConfigureDbContext(DbContextOptionsBuilder options) =>
+    options.UseMySql(connectionString, new MariaDbServerVersion(new Version(10, 11, 0)));
+
+builder.Services.AddDbContext<AppDbContext>(ConfigureDbContext);
+
+// Fábrica aparte para componentes que viven junto a la página (como UserMenu) y no pueden
+// compartir el AppDbContext con ámbito de circuito de la página sin arriesgar operaciones
+// concurrentes sobre la misma instancia (Blazor Server comparte un único DI scope por circuito).
+builder.Services.AddDbContextFactory<AppDbContext>(ConfigureDbContext);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
@@ -45,6 +52,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<ProformaService>();
 builder.Services.AddScoped<SidebarState>();
 builder.Services.AddScoped<CurrentUserService>();
+builder.Services.AddScoped<SolicitudCorreccionService>();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

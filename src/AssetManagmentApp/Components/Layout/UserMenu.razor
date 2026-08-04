@@ -1,10 +1,29 @@
 @rendermode InteractiveServer
+@implements IDisposable
+@using AssetManagmentApp.Data
+@using AssetManagmentApp.Models
 @using AssetManagmentApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Navigation
 
 <AuthorizeView>
     <Authorized>
         <div class="user-menu-bar">
-            <i class="bi bi-bell fs-5 user-menu-icon" aria-hidden="true"></i>
+            <AuthorizeView Roles="Admin" Context="adminContext">
+                <Authorized>
+                    <a href="solicitudes" class="user-menu-bell" title="Solicitudes pendientes">
+                        <i class="bi bi-bell fs-5 user-menu-icon" aria-hidden="true"></i>
+                        @if (pendientes > 0)
+                        {
+                            <span class="user-menu-badge">@(pendientes > 99 ? "99+" : pendientes)</span>
+                        }
+                    </a>
+                </Authorized>
+                <NotAuthorized>
+                    <i class="bi bi-bell fs-5 user-menu-icon" aria-hidden="true"></i>
+                </NotAuthorized>
+            </AuthorizeView>
 
             <div class="user-menu-profile">
                 <button type="button" class="user-menu-circle" @onclick="AlternarMenu">@Inicial(context)</button>
@@ -43,4 +62,29 @@
     }
 
     private void AlternarMenu() => mostrarMenu = !mostrarMenu;
+
+    private int pendientes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        await CargarPendientesAsync();
+    }
+
+    private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        await CargarPendientesAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CargarPendientesAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        pendientes = await db.SolicitudesCorreccion.CountAsync(s => s.Estado == EstadoSolicitud.Pendiente);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
 }

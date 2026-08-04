@@ -1,0 +1,228 @@
+@page "/solicitudes"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@using AssetManagmentApp.Data
+@using AssetManagmentApp.Models
+@using AssetManagmentApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+@inject CurrentUserService CurrentUser
+@inject SolicitudCorreccionService SolicitudCorreccion
+
+<PageTitle>Solicitudes de Corrección</PageTitle>
+
+<PageHeader Titulo="Solicitudes de Corrección" />
+
+<div class="page-card">
+
+<AlertBox Mensaje="@mensaje" Tipo="success" />
+<AlertBox Mensaje="@errorMessage" />
+
+<div class="row g-2 mb-3 align-items-end filtros-sticky">
+    <div class="col-auto">
+        <label class="form-label">Estado</label>
+        <select class="form-select" @bind="filtroEstado" @bind:after="CargarAsync">
+            <option value="@nameof(EstadoSolicitud.Pendiente)">Pendientes</option>
+            <option value="@nameof(EstadoSolicitud.Aprobada)">Aprobadas</option>
+            <option value="@nameof(EstadoSolicitud.Rechazada)">Rechazadas</option>
+            <option value="">Todas</option>
+        </select>
+    </div>
+</div>
+
+@if (solicitudes is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else if (solicitudes.Count == 0)
+{
+    <p><em>No hay solicitudes que coincidan con el filtro.</em></p>
+}
+else
+{
+    <div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Activo</th>
+                <th>De</th>
+                <th>A</th>
+                <th>Motivo</th>
+                <th>Solicitó</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var solicitud in solicitudes)
+            {
+                <tr>
+                    <td>@solicitud.FechaSolicitud.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@solicitud.Asignacion.Activo.Placa</td>
+                    <td>@solicitud.ProyectoOriginal.Nombre</td>
+                    <td>@solicitud.ProyectoNuevo.Nombre</td>
+                    <td>@solicitud.Motivo</td>
+                    <td>@solicitud.UsuarioSolicita.Nombre</td>
+                    <td>
+                        <span class="badge @ClaseColorEstado(solicitud.Estado)">@solicitud.Estado.Etiqueta()</span>
+                        @if (solicitud.Estado != EstadoSolicitud.Pendiente)
+                        {
+                            <div class="small text-muted">
+                                @solicitud.UsuarioResuelve?.Nombre · @solicitud.FechaResolucion?.ToString("dd/MM/yyyy HH:mm")
+                                @if (!string.IsNullOrWhiteSpace(solicitud.ComentarioResolucion))
+                                {
+                                    <div>@solicitud.ComentarioResolucion</div>
+                                }
+                            </div>
+                        }
+                    </td>
+                    <td>
+                        @if (solicitud.Estado == EstadoSolicitud.Pendiente)
+                        {
+                            @if (filaAccionId == solicitud.Id && filaAccionTipo == "rechazar")
+                            {
+                                <div class="d-flex flex-column gap-1">
+                                    <input class="form-control form-control-sm" placeholder="Motivo del rechazo (opcional)" @bind="rechazoComentario" />
+                                    <div class="d-flex gap-1">
+                                        <button class="btn btn-sm btn-danger" disabled="@procesando" @onclick="() => ConfirmarRechazarAsync(solicitud)">Confirmar rechazo</button>
+                                        <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="d-flex gap-1">
+                                    <button class="btn btn-sm btn-success" disabled="@procesando" @onclick="() => AprobarAsync(solicitud)">Aprobar</button>
+                                    <button class="btn btn-sm btn-outline-danger" disabled="@procesando" @onclick="() => AbrirRechazar(solicitud)">Rechazar</button>
+                                </div>
+                            }
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    </div>
+}
+
+</div>
+
+@code {
+    private List<SolicitudCorreccionAsignacion>? solicitudes;
+    private string filtroEstado = nameof(EstadoSolicitud.Pendiente);
+    private string? errorMessage;
+    private string? mensaje;
+    private bool procesando;
+
+    private int? filaAccionId;
+    private string filaAccionTipo = "";
+    private string rechazoComentario = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAsync();
+    }
+
+    private async Task CargarAsync()
+    {
+        var query = Db.SolicitudesCorreccion
+            .AsNoTracking()
+            .Include(s => s.Asignacion).ThenInclude(a => a.Activo)
+            .Include(s => s.ProyectoOriginal)
+            .Include(s => s.ProyectoNuevo)
+            .Include(s => s.UsuarioSolicita)
+            .Include(s => s.UsuarioResuelve)
+            .AsQueryable();
+
+        if (Enum.TryParse<EstadoSolicitud>(filtroEstado, out var estado))
+        {
+            query = query.Where(s => s.Estado == estado);
+        }
+
+        solicitudes = await query.OrderByDescending(s => s.FechaSolicitud).ToListAsync();
+    }
+
+    private void AbrirRechazar(SolicitudCorreccionAsignacion solicitud)
+    {
+        filaAccionId = solicitud.Id;
+        filaAccionTipo = "rechazar";
+        rechazoComentario = "";
+        errorMessage = null;
+        mensaje = null;
+    }
+
+    private void CancelarAccion()
+    {
+        filaAccionId = null;
+        filaAccionTipo = "";
+    }
+
+    private async Task AprobarAsync(SolicitudCorreccionAsignacion solicitud)
+    {
+        if (procesando)
+        {
+            return;
+        }
+
+        procesando = true;
+        try
+        {
+            errorMessage = null;
+            mensaje = null;
+
+            var usuarioId = await CurrentUser.ObtenerUsuarioActualIdAsync();
+            await SolicitudCorreccion.AprobarAsync(solicitud.Id, usuarioId);
+
+            mensaje = "Solicitud aprobada: el proyecto del activo fue corregido.";
+            await CargarAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            errorMessage = ex.Message;
+            await CargarAsync();
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+    private async Task ConfirmarRechazarAsync(SolicitudCorreccionAsignacion solicitud)
+    {
+        if (procesando)
+        {
+            return;
+        }
+
+        procesando = true;
+        try
+        {
+            errorMessage = null;
+            mensaje = null;
+
+            var usuarioId = await CurrentUser.ObtenerUsuarioActualIdAsync();
+            await SolicitudCorreccion.RechazarAsync(solicitud.Id, usuarioId, rechazoComentario);
+
+            mensaje = "Solicitud rechazada.";
+            filaAccionId = null;
+            await CargarAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+    private static string ClaseColorEstado(EstadoSolicitud estado) => estado switch
+    {
+        EstadoSolicitud.Pendiente => "bg-warning text-dark",
+        EstadoSolicitud.Aprobada => "bg-success",
+        EstadoSolicitud.Rechazada => "bg-secondary",
+        _ => "bg-secondary"
+    };
+}
