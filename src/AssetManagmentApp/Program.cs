@@ -15,12 +15,15 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 void ConfigureDbContext(DbContextOptionsBuilder options) =>
     options.UseMySql(connectionString, new MariaDbServerVersion(new Version(10, 11, 0)));
 
-builder.Services.AddDbContext<AppDbContext>(ConfigureDbContext);
-
-// Fábrica aparte para componentes que viven junto a la página (como UserMenu) y no pueden
-// compartir el AppDbContext con ámbito de circuito de la página sin arriesgar operaciones
-// concurrentes sobre la misma instancia (Blazor Server comparte un único DI scope por circuito).
+// Se registra solo la fábrica (Singleton) y el AppDbContext con ámbito de request se crea
+// a partir de ella, en vez de llamar AddDbContext por separado: registrar ambas formas
+// directamente duplica/choca el registro de DbContextOptions<AppDbContext> (Scoped vs.
+// Singleton) y rompe la validación de servicios de EF Core en tiempo de diseño.
+// La fábrica también permite que componentes que viven junto a la página (como UserMenu)
+// usen su propio AppDbContext aislado, sin competir por la misma instancia con ámbito de
+// circuito de la página (Blazor Server comparte un único DI scope por circuito).
 builder.Services.AddDbContextFactory<AppDbContext>(ConfigureDbContext);
+builder.Services.AddScoped<AppDbContext>(sp => sp.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext());
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
