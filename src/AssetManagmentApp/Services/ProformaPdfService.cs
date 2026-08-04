@@ -49,8 +49,8 @@ public static class ProformaPdfService
                     {
                         table.ColumnsDefinition(columns =>
                         {
+                            columns.RelativeColumn(4);
                             columns.RelativeColumn(2);
-                            columns.RelativeColumn(3);
                             columns.RelativeColumn(2);
                             columns.RelativeColumn(2);
                             columns.RelativeColumn(2);
