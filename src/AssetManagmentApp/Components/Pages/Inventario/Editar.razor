@@ -112,6 +112,7 @@ else
         activos = await Db.Activos
             .AsNoTracking()
             .Include(a => a.TipoEquipo)
+            .Where(a => !a.Eliminado)
             .OrderBy(a => a.Placa)
             .ToListAsync();
     }

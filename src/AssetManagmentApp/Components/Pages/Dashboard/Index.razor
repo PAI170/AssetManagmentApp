@@ -160,6 +160,7 @@ else
 
         var conteosCrudos = await Db.Activos
             .AsNoTracking()
+            .Where(a => !a.Eliminado)
             .GroupBy(a => a.Estado)
             .Select(g => new { Estado = g.Key, Cantidad = g.Count() })
             .ToListAsync();
