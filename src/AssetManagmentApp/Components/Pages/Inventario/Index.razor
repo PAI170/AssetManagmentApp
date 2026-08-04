@@ -149,7 +149,6 @@ else
                 <th>Tipo</th>
                 <th>Estado</th>
                 <th>Proyecto actual</th>
-                <th>Fecha registro</th>
                 <th>Acciones</th>
             </tr>
         </thead>
@@ -168,7 +167,6 @@ else
                     <td>@activo.TipoEquipo.Nombre</td>
                     <td>@activo.Estado.Etiqueta()</td>
                     <td>@(activo.ProyectoActual?.Nombre ?? "Bodega")</td>
-                    <td>@activo.FechaRegistro.ToString("dd/MM/yyyy")</td>
                     <td>
                         <AuthorizeView Roles="Admin">
                             <Authorized>
