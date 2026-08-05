@@ -36,77 +36,82 @@ else
         </div>
     </div>
 
-    <h3>Equipo actualmente asignado</h3>
-    @if (activosAsignados is null || activosAsignados.Count == 0)
-    {
-        <p><em>No hay equipo asignado a este proyecto.</em></p>
-    }
-    else
-    {
-        <div class="table-responsive">
-        <table class="table table-sm table-striped mb-4">
-            <thead>
-                <tr>
-                    <th>Placa</th>
-                    <th>Tipo</th>
-                    <th>Estado</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var activo in activosAsignados)
-                {
+    <div class="dashboard-card accent-navy delay-1 mb-4">
+        <div class="dashboard-card-title">Equipo actualmente asignado</div>
+        @if (activosAsignados is null || activosAsignados.Count == 0)
+        {
+            <p class="text-muted small mb-0">No hay equipo asignado a este proyecto.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+            <table class="table table-sm table-striped mb-0">
+                <thead>
                     <tr>
-                        <td>@activo.Placa</td>
-                        <td>@activo.TipoEquipo.Nombre</td>
-                        <td>@activo.Estado</td>
+                        <th>Placa</th>
+                        <th>Tipo</th>
+                        <th>Estado</th>
                     </tr>
-                }
-            </tbody>
-        </table>
-        </div>
-    }
+                </thead>
+                <tbody>
+                    @foreach (var activo in activosAsignados)
+                    {
+                        <tr>
+                            <td>@activo.Placa</td>
+                            <td>@activo.TipoEquipo.Nombre</td>
+                            <td>@activo.Estado</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            </div>
+        }
+    </div>
 
-    <h3>Historial de movimientos</h3>
-    @if (movimientos is null || movimientos.Count == 0)
-    {
-        <p><em>Sin movimientos registrados.</em></p>
-    }
-    else
-    {
-        <div class="table-responsive">
-        <table class="table table-sm table-striped mb-4">
-            <thead>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Activo</th>
-                    <th>Tipo de equipo</th>
-                    <th>Movimiento</th>
-                    <th>Estado anterior</th>
-                    <th>Estado nuevo</th>
-                    <th>Usuario</th>
-                    <th>Observación</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var mov in movimientos)
-                {
+    <div class="dashboard-card accent-navy-light delay-2 mb-4">
+        <div class="dashboard-card-title">Historial de movimientos</div>
+        @if (movimientos is null || movimientos.Count == 0)
+        {
+            <p class="text-muted small mb-0">Sin movimientos registrados.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+            <table class="table table-sm table-striped mb-0">
+                <thead>
                     <tr>
-                        <td>@mov.FechaMovimiento.ToString("dd/MM/yyyy HH:mm")</td>
-                        <td>@mov.Activo.Placa</td>
-                        <td>@mov.Activo.TipoEquipo.Nombre</td>
-                        <td>@mov.TipoMovimiento.Etiqueta()</td>
-                        <td>@mov.EstadoAnterior</td>
-                        <td>@mov.EstadoNuevo</td>
-                        <td>@mov.Usuario.Nombre</td>
-                        <td>@mov.Observacion</td>
+                        <th>Fecha</th>
+                        <th>Activo</th>
+                        <th>Tipo de equipo</th>
+                        <th>Movimiento</th>
+                        <th>Estado anterior</th>
+                        <th>Estado nuevo</th>
+                        <th>Usuario</th>
+                        <th>Observación</th>
                     </tr>
-                }
-            </tbody>
-        </table>
-        </div>
-    }
+                </thead>
+                <tbody>
+                    @foreach (var mov in movimientos)
+                    {
+                        <tr>
+                            <td>@mov.FechaMovimiento.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@mov.Activo.Placa</td>
+                            <td>@mov.Activo.TipoEquipo.Nombre</td>
+                            <td>@mov.TipoMovimiento.Etiqueta()</td>
+                            <td>@mov.EstadoAnterior</td>
+                            <td>@mov.EstadoNuevo</td>
+                            <td>@mov.Usuario.Nombre</td>
+                            <td>@mov.Observacion</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            </div>
+        }
+    </div>
 
-    <h3>Historial de proformas</h3>
+    <div class="dashboard-card accent-orange delay-3">
+        <div class="dashboard-card-title">Historial de proformas</div>
 
     <AuthorizeView Roles="Admin">
         <Authorized>
@@ -181,12 +186,12 @@ else
 
     @if (proformas is null || proformas.Count == 0)
     {
-        <p><em>Sin proformas generadas.</em></p>
+        <p class="text-muted small mb-0">Sin proformas generadas.</p>
     }
     else
     {
         <div class="table-responsive">
-        <table class="table table-sm table-striped">
+        <table class="table table-sm table-striped mb-0">
             <thead>
                 <tr>
                     <th>Número</th>
@@ -223,6 +228,8 @@ else
         </table>
         </div>
     }
+
+    </div>
 
     </div>
 }
