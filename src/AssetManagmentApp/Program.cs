@@ -2,6 +2,7 @@ using AssetManagmentApp.Components;
 using AssetManagmentApp.Data;
 using AssetManagmentApp.Models;
 using AssetManagmentApp.Services;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,6 +29,13 @@ builder.Services.AddScoped<AppDbContext>(sp => sp.GetRequiredService<IDbContextF
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<TurnstileService>();
+
+// Llaves de cifrado en memoria (no en disco): al reiniciar el proceso, las cookies de
+// sesion ya emitidas quedan invalidas y todos los usuarios tienen que volver a loguearse.
+// Sin esto, ASP.NET Core persiste las llaves en disco por defecto y una cookie "recuerdame"
+// sigue siendo valida despues de un reinicio del servidor.
+builder.Services.AddDataProtection()
+    .UseEphemeralDataProtectionProvider();
 
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole<int>>(options =>
