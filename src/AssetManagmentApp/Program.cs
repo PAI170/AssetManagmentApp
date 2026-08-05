@@ -47,6 +47,8 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/login";
     options.AccessDeniedPath = "/acceso-denegado";
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(5);
+    options.SlidingExpiration = true;
 });
 
 builder.Services.AddCascadingAuthenticationState();
