@@ -1,4 +1,11 @@
 (function () {
+    // En /login no hay sesion que proteger. El login siempre hace una recarga completa
+    // de pagina (forceLoad:true / redirect real), asi que esta comprobacion al cargar el
+    // script es suficiente: no hace falta re-evaluarla despues.
+    if (window.location.pathname.toLowerCase() === '/login') {
+        return;
+    }
+
     // Estos valores deben coincidir con options.ExpireTimeSpan en Program.cs.
     var SESSION_TIMEOUT_MS = 5 * 60 * 1000;
     var WARNING_BEFORE_MS = 60 * 1000;
