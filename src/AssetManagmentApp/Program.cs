@@ -90,6 +90,13 @@ app.MapPost("/Account/Logout", async (SignInManager<ApplicationUser> signInManag
     return Results.LocalRedirect("/");
 });
 
+// Ping desde js/sessionTimeout.js mientras hay actividad en la pagina. El circuito de
+// Blazor Server no genera peticiones HTTP por si solo, asi que sin este ping la cookie
+// (SlidingExpiration) nunca se renovaria mientras el usuario interactua dentro de una
+// sola pagina sin navegar.
+app.MapPost("/account/keep-alive", () => Results.Ok())
+    .RequireAuthorization();
+
 app.MapGet("/proformas/{id:int}/pdf", async (int id, AppDbContext db) =>
 {
     var proforma = await db.Proformas
