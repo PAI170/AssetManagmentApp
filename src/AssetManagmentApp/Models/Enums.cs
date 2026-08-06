@@ -57,7 +57,7 @@ public static class EnumEtiquetas
         TipoMovimiento.Asignacion => "Asignación",
         TipoMovimiento.RetornoABodega => "Retorno a bodega",
         TipoMovimiento.CambioDeEstado => "Cambio de estado",
-        TipoMovimiento.CorreccionProyecto => "Corrección de proyecto",
+        TipoMovimiento.CorreccionProyecto => "Corrección de asignación",
         _ => tipo.ToString()
     };
 

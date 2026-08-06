@@ -16,6 +16,7 @@
 <div class="page-card">
 
 <AlertBox Mensaje="@errorMessage" />
+<AlertBox Mensaje="@mensaje" Tipo="success" />
 
 <div class="row g-2 mb-3 align-items-end filtros-sticky">
     <div class="col-auto">
@@ -72,6 +73,7 @@
                     <select class="form-select form-select-sm" @bind="bulkAccion">
                         <option value="asignar">Asignar a proyecto</option>
                         <option value="estado">Cambiar estado</option>
+                        <option value="corregirFecha">Corregir fecha de ingreso</option>
                         <option value="eliminar">Eliminar</option>
                     </select>
                 </div>
@@ -112,6 +114,19 @@
                         <input class="form-control form-control-sm" @bind="bulkObservacion" />
                     </div>
                     <button class="btn btn-sm btn-success" disabled="@procesando" @onclick="ConfirmarCambiarEstadoMasivoAsync">Aplicar</button>
+                }
+                else if (bulkAccion == "corregirFecha")
+                {
+                    <div>
+                        <label class="form-label mb-0">Fecha de ingreso correcta</label>
+                        <input type="date" class="form-control form-control-sm" @bind="bulkFechaCorreccion" max="@fechaMaxima" />
+                    </div>
+                    <div>
+                        <label class="form-label mb-0">Motivo</label>
+                        <input class="form-control form-control-sm" @bind="bulkMotivoCorreccion" />
+                    </div>
+                    <div class="text-muted small">Se omiten los que no tengan una asignación abierta y sin facturar, o ya tengan una solicitud pendiente. Va por aprobación.</div>
+                    <button class="btn btn-sm btn-success" disabled="@procesando" @onclick="ConfirmarCorregirFechaMasivoAsync">Enviar solicitudes</button>
                 }
                 else if (bulkAccion == "eliminar")
                 {
@@ -240,22 +255,24 @@ else
                                 else if (filaAccionId == activo.Id && filaAccionTipo == "corregir")
                                 {
                                     <div class="d-flex flex-column gap-1">
-                                        <select class="form-select form-select-sm" @bind="correccionNuevoProyectoId">
-                                            <option value="0">-- Proyecto correcto --</option>
-                                            @if (proyectos is not null)
-                                            {
-                                                @foreach (var proyecto in proyectos.Where(p => p.Id != activo.ProyectoActualId))
+                                        <div class="d-flex gap-1 align-items-center">
+                                            <select class="form-select form-select-sm" @bind="correccionNuevoProyectoId">
+                                                @if (proyectos is not null)
                                                 {
-                                                    <option value="@proyecto.Id">@proyecto.Nombre</option>
+                                                    @foreach (var proyecto in proyectos)
+                                                    {
+                                                        <option value="@proyecto.Id">@proyecto.Nombre</option>
+                                                    }
                                                 }
-                                            }
-                                        </select>
+                                            </select>
+                                            <input type="date" class="form-control form-control-sm" @bind="correccionNuevaFecha" max="@fechaMaxima" />
+                                        </div>
                                         <input class="form-control form-control-sm" placeholder="Motivo de la corrección" @bind="correccionMotivo" />
                                         <div class="small border rounded px-2 py-1">
-                                            Esto crea una <strong>solicitud</strong> para mover "@activo.Placa" de "@(activo.ProyectoActual?.Nombre ?? "Bodega")" a "@NombreProyecto(correccionNuevoProyectoId)". Un administrador debe aprobarla antes de aplicarse.
+                                            Esto crea una <strong>solicitud</strong> para "@activo.Placa": proyecto "@(activo.ProyectoActual?.Nombre ?? "Bodega")" → "@NombreProyecto(correccionNuevoProyectoId)", fecha de ingreso @(fechaIngresoPorActivo.TryGetValue(activo.Id, out var fechaActual) ? fechaActual.ToString("dd/MM/yyyy") : "?") → @correccionNuevaFecha.ToString("dd/MM/yyyy"). Un administrador debe aprobarla antes de aplicarse.
                                         </div>
                                         <div class="d-flex gap-1">
-                                            <button class="btn btn-sm btn-success" disabled="@procesando" @onclick="() => ConfirmarCorregirProyectoAsync(activo)">Enviar solicitud</button>
+                                            <button class="btn btn-sm btn-success" disabled="@procesando" @onclick="() => ConfirmarCorregirAsignacionAsync(activo)">Enviar solicitud</button>
                                             <button class="btn btn-sm btn-secondary" @onclick="CancelarAccion">Cancelar</button>
                                         </div>
                                     </div>
@@ -282,7 +299,7 @@ else
                                         }
                                         else if (activosCorregibles.Contains(activo.Id))
                                         {
-                                            <button class="btn btn-sm btn-outline-info" @onclick="() => AbrirCorregirProyecto(activo)">Corregir proyecto</button>
+                                            <button class="btn btn-sm btn-outline-info" @onclick="() => AbrirCorregirAsignacion(activo)">Corregir asignación</button>
                                         }
                                     </div>
                                 }
@@ -308,6 +325,7 @@ else
     private string filtroProyectoId = "";
 
     private string? errorMessage;
+    private string? mensaje;
     private bool procesando;
 
     private int? filaAccionId;
@@ -319,8 +337,10 @@ else
     private readonly string fechaMaxima = DateOnly.FromDateTime(DateTime.Now).ToString("yyyy-MM-dd");
 
     private int correccionNuevoProyectoId;
+    private DateOnly correccionNuevaFecha;
     private string correccionMotivo = "";
     private Dictionary<int, int> asignacionIdPorActivo = [];
+    private Dictionary<int, DateOnly> fechaIngresoPorActivo = [];
     private HashSet<int> activosCorregibles = [];
     private HashSet<int> activosConSolicitudPendiente = [];
 
@@ -330,6 +350,8 @@ else
     private DateOnly bulkFecha = DateOnly.FromDateTime(DateTime.Now);
     private EstadoActivo bulkNuevoEstado;
     private string bulkObservacion = "";
+    private DateOnly bulkFechaCorreccion = DateOnly.FromDateTime(DateTime.Now);
+    private string bulkMotivoCorreccion = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -374,6 +396,7 @@ else
             .ToListAsync();
 
         asignacionIdPorActivo = asignacionesAbiertas.ToDictionary(a => a.ActivoId, a => a.Id);
+        fechaIngresoPorActivo = asignacionesAbiertas.ToDictionary(a => a.ActivoId, a => a.FechaIngreso);
         activosCorregibles = asignacionesAbiertas
             .Where(a => a.FechaUltimoCobro == a.FechaIngreso)
             .Select(a => a.ActivoId)
@@ -489,11 +512,12 @@ else
         errorMessage = null;
     }
 
-    private void AbrirCorregirProyecto(Activo activo)
+    private void AbrirCorregirAsignacion(Activo activo)
     {
         filaAccionId = activo.Id;
         filaAccionTipo = "corregir";
-        correccionNuevoProyectoId = 0;
+        correccionNuevoProyectoId = activo.ProyectoActualId ?? 0;
+        correccionNuevaFecha = fechaIngresoPorActivo.TryGetValue(activo.Id, out var fecha) ? fecha : DateOnly.FromDateTime(DateTime.Now);
         correccionMotivo = "";
         errorMessage = null;
     }
@@ -975,7 +999,7 @@ else
         }
     }
 
-    private async Task ConfirmarCorregirProyectoAsync(Activo activoOriginal)
+    private async Task ConfirmarCorregirAsignacionAsync(Activo activoOriginal)
     {
         if (procesando)
         {
@@ -990,6 +1014,13 @@ else
             if (correccionNuevoProyectoId <= 0)
             {
                 errorMessage = "Seleccioná el proyecto correcto.";
+                return;
+            }
+
+            var hoy = DateOnly.FromDateTime(DateTime.Now);
+            if (correccionNuevaFecha > hoy)
+            {
+                errorMessage = "La fecha de ingreso no puede ser futura.";
                 return;
             }
 
@@ -1009,7 +1040,7 @@ else
 
             var usuarioId = await CurrentUser.ObtenerUsuarioActualIdAsync();
 
-            await SolicitudCorreccion.CrearAsync(asignacionId, correccionNuevoProyectoId, correccionMotivo, usuarioId);
+            await SolicitudCorreccion.CrearAsync(asignacionId, correccionNuevoProyectoId, correccionNuevaFecha, correccionMotivo, usuarioId);
 
             filaAccionId = null;
             await CargarActivosAsync();
@@ -1017,6 +1048,84 @@ else
         catch (InvalidOperationException ex)
         {
             errorMessage = ex.Message;
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+    private async Task ConfirmarCorregirFechaMasivoAsync()
+    {
+        if (procesando)
+        {
+            return;
+        }
+
+        procesando = true;
+        try
+        {
+            errorMessage = null;
+            mensaje = null;
+
+            if (string.IsNullOrWhiteSpace(bulkMotivoCorreccion))
+            {
+                errorMessage = "Indicá el motivo de la corrección.";
+                return;
+            }
+
+            var hoy = DateOnly.FromDateTime(DateTime.Now);
+            if (bulkFechaCorreccion > hoy)
+            {
+                errorMessage = "La fecha de ingreso no puede ser futura.";
+                return;
+            }
+
+            var idsSeleccionados = seleccionados.ToList();
+            if (idsSeleccionados.Count == 0)
+            {
+                errorMessage = "No hay activos seleccionados.";
+                return;
+            }
+
+            var usuarioId = await CurrentUser.ObtenerUsuarioActualIdAsync();
+
+            var enviadas = 0;
+            var omitidos = 0;
+
+            foreach (var activoId in idsSeleccionados)
+            {
+                var proyectoActualId = activos?.FirstOrDefault(a => a.Id == activoId)?.ProyectoActualId;
+
+                if (proyectoActualId is null || !asignacionIdPorActivo.TryGetValue(activoId, out var asignacionId))
+                {
+                    omitidos++;
+                    continue;
+                }
+
+                try
+                {
+                    await SolicitudCorreccion.CrearAsync(asignacionId, proyectoActualId.Value, bulkFechaCorreccion, bulkMotivoCorreccion, usuarioId);
+                    enviadas++;
+                }
+                catch (InvalidOperationException)
+                {
+                    omitidos++;
+                }
+            }
+
+            seleccionados.Clear();
+            bulkMotivoCorreccion = "";
+            await CargarActivosAsync();
+
+            if (omitidos > 0)
+            {
+                errorMessage = $"{enviadas} solicitud(es) enviada(s). {omitidos} activo(s) se omitieron (no elegibles o ya tienen una solicitud pendiente).";
+            }
+            else
+            {
+                mensaje = $"{enviadas} solicitud(es) de corrección de fecha enviada(s), pendientes de aprobación.";
+            }
         }
         finally
         {

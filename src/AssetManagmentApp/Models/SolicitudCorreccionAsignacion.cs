@@ -9,6 +9,8 @@ public class SolicitudCorreccionAsignacion
     public Proyecto ProyectoOriginal { get; set; } = null!;
     public int ProyectoNuevoId { get; set; }
     public Proyecto ProyectoNuevo { get; set; } = null!;
+    public DateOnly FechaIngresoOriginal { get; set; }
+    public DateOnly FechaIngresoNueva { get; set; }
     public string Motivo { get; set; } = string.Empty;
     public EstadoSolicitud Estado { get; set; } = EstadoSolicitud.Pendiente;
     public int UsuarioSolicitaId { get; set; }

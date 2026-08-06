@@ -6,16 +6,21 @@ namespace AssetManagmentApp.Services;
 
 public class SolicitudCorreccionService(AppDbContext db)
 {
-    public async Task<SolicitudCorreccionAsignacion> CrearAsync(int asignacionId, int nuevoProyectoId, string motivo, int usuarioSolicitaId)
+    public async Task<SolicitudCorreccionAsignacion> CrearAsync(int asignacionId, int nuevoProyectoId, DateOnly nuevaFechaIngreso, string motivo, int usuarioSolicitaId)
     {
         var asignacion = await db.AsignacionesActivoProyecto.FirstOrDefaultAsync(a => a.Id == asignacionId)
             ?? throw new InvalidOperationException("La asignación no existe.");
 
         ValidarElegible(asignacion);
 
-        if (asignacion.ProyectoId == nuevoProyectoId)
+        if (asignacion.ProyectoId == nuevoProyectoId && asignacion.FechaIngreso == nuevaFechaIngreso)
         {
-            throw new InvalidOperationException("Seleccioná un proyecto distinto al actual.");
+            throw new InvalidOperationException("Cambiá el proyecto y/o la fecha de ingreso; no hay nada que corregir.");
+        }
+
+        if (nuevaFechaIngreso > DateOnly.FromDateTime(DateTime.Now))
+        {
+            throw new InvalidOperationException("La fecha de ingreso no puede ser futura.");
         }
 
         var yaHayPendiente = await db.SolicitudesCorreccion
@@ -31,6 +36,8 @@ public class SolicitudCorreccionService(AppDbContext db)
             AsignacionActivoProyectoId = asignacionId,
             ProyectoOriginalId = asignacion.ProyectoId,
             ProyectoNuevoId = nuevoProyectoId,
+            FechaIngresoOriginal = asignacion.FechaIngreso,
+            FechaIngresoNueva = nuevaFechaIngreso,
             Motivo = motivo.Trim(),
             Estado = EstadoSolicitud.Pendiente,
             UsuarioSolicitaId = usuarioSolicitaId,
@@ -78,11 +85,27 @@ public class SolicitudCorreccionService(AppDbContext db)
             ?? throw new InvalidOperationException("El activo ya no existe.");
 
         var proyectoAnteriorId = asignacion.ProyectoId;
+        var cambioProyecto = proyectoAnteriorId != solicitud.ProyectoNuevoId;
+        var cambioFecha = asignacion.FechaIngreso != solicitud.FechaIngresoNueva;
+
         asignacion.ProyectoId = solicitud.ProyectoNuevoId;
+        asignacion.FechaIngreso = solicitud.FechaIngresoNueva;
+        // Se mantiene el invariante "sin facturar" == FechaUltimoCobro == FechaIngreso.
+        asignacion.FechaUltimoCobro = solicitud.FechaIngresoNueva;
 
         if (activo.ProyectoActualId == proyectoAnteriorId)
         {
             activo.ProyectoActualId = solicitud.ProyectoNuevoId;
+        }
+
+        var detalleCambios = new List<string>();
+        if (cambioProyecto)
+        {
+            detalleCambios.Add($"proyecto \"{solicitud.ProyectoOriginal.Nombre}\" → \"{solicitud.ProyectoNuevo.Nombre}\"");
+        }
+        if (cambioFecha)
+        {
+            detalleCambios.Add($"fecha de ingreso {solicitud.FechaIngresoOriginal:dd/MM/yyyy} → {solicitud.FechaIngresoNueva:dd/MM/yyyy}");
         }
 
         db.Movimientos.Add(new Movimiento
@@ -94,7 +117,7 @@ public class SolicitudCorreccionService(AppDbContext db)
             EstadoNuevo = activo.Estado,
             FechaMovimiento = DateTime.Now,
             UsuarioId = usuarioResuelveId,
-            Observacion = $"Corrección de proyecto aprobada: \"{solicitud.ProyectoOriginal.Nombre}\" → \"{solicitud.ProyectoNuevo.Nombre}\". Motivo: {solicitud.Motivo}"
+            Observacion = $"Corrección de asignación aprobada: {string.Join(" · ", detalleCambios)}. Motivo: {solicitud.Motivo}"
         });
 
         solicitud.Estado = EstadoSolicitud.Aprobada;

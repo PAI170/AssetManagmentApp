@@ -60,8 +60,26 @@ else
                 <tr>
                     <td>@solicitud.FechaSolicitud.ToString("dd/MM/yyyy HH:mm")</td>
                     <td>@solicitud.Asignacion.Activo.Placa</td>
-                    <td>@solicitud.ProyectoOriginal.Nombre</td>
-                    <td>@solicitud.ProyectoNuevo.Nombre</td>
+                    <td>
+                        @if (solicitud.ProyectoOriginalId != solicitud.ProyectoNuevoId)
+                        {
+                            <div>@solicitud.ProyectoOriginal.Nombre</div>
+                        }
+                        @if (solicitud.FechaIngresoOriginal != solicitud.FechaIngresoNueva)
+                        {
+                            <div class="text-muted small">Ingreso: @solicitud.FechaIngresoOriginal.ToString("dd/MM/yyyy")</div>
+                        }
+                    </td>
+                    <td>
+                        @if (solicitud.ProyectoOriginalId != solicitud.ProyectoNuevoId)
+                        {
+                            <div>@solicitud.ProyectoNuevo.Nombre</div>
+                        }
+                        @if (solicitud.FechaIngresoOriginal != solicitud.FechaIngresoNueva)
+                        {
+                            <div class="text-muted small">Ingreso: @solicitud.FechaIngresoNueva.ToString("dd/MM/yyyy")</div>
+                        }
+                    </td>
                     <td>@solicitud.Motivo</td>
                     <td>@solicitud.UsuarioSolicita.Nombre</td>
                     <td>
@@ -174,7 +192,7 @@ else
             var usuarioId = await CurrentUser.ObtenerUsuarioActualIdAsync();
             await SolicitudCorreccion.AprobarAsync(solicitud.Id, usuarioId);
 
-            mensaje = "Solicitud aprobada: el proyecto del activo fue corregido.";
+            mensaje = "Solicitud aprobada: la asignación del activo fue corregida.";
             await CargarAsync();
         }
         catch (InvalidOperationException ex)
