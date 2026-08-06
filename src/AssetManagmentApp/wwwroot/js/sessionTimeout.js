@@ -79,10 +79,13 @@
     }
 
     function marcarActividad() {
-        lastActivity = Date.now();
         if (warningShown) {
-            confirmarSesion();
+            // Mientras el aviso está visible, no lo cerramos por movimientos
+            // incidentales del mouse (p. ej. al acercarse al botón). Solo el
+            // clic explícito en "Sí, quiero seguir conectado" lo confirma.
+            return;
         }
+        lastActivity = Date.now();
     }
 
     ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'].forEach(function (evento) {
