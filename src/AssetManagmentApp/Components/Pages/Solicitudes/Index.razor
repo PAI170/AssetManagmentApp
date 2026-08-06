@@ -28,7 +28,35 @@
             <option value="">Todas</option>
         </select>
     </div>
+    @if (PendientesVisibles.Count > 0)
+    {
+        <div class="col-auto">
+            <button class="btn btn-sm btn-success" disabled="@procesando" @onclick="AbrirAprobarTodas">Aprobar todas</button>
+            <button class="btn btn-sm btn-outline-danger" disabled="@procesando" @onclick="AbrirRechazarTodas">Rechazar todas</button>
+        </div>
+    }
 </div>
+
+@if (seleccionados.Count > 0)
+{
+    <div class="d-flex flex-wrap gap-2 align-items-end mb-3 p-2 border rounded">
+        <div><strong>@seleccionados.Count</strong> seleccionada(s)</div>
+        @if (bulkAccion == "rechazar")
+        {
+            <div>
+                <label class="form-label mb-0">Motivo del rechazo (opcional)</label>
+                <input class="form-control form-control-sm" @bind="bulkRechazoComentario" />
+            </div>
+            <button class="btn btn-sm btn-danger" disabled="@procesando" @onclick="ConfirmarRechazarMasivoAsync">Confirmar rechazo</button>
+        }
+        else
+        {
+            <div class="text-muted small">Se van a aprobar las @seleccionados.Count solicitud(es) seleccionadas.</div>
+            <button class="btn btn-sm btn-success" disabled="@procesando" @onclick="ConfirmarAprobarMasivoAsync">Confirmar aprobación</button>
+        }
+        <button class="btn btn-sm btn-outline-secondary" @onclick="LimpiarSeleccion">Cancelar selección</button>
+    </div>
+}
 
 @if (solicitudes is null)
 {
@@ -44,6 +72,12 @@ else
     <table class="table table-striped align-middle">
         <thead>
             <tr>
+                <th>
+                    @if (PendientesVisibles.Count > 0)
+                    {
+                        <input type="checkbox" class="form-check-input" checked="@TodosSeleccionados" @onchange="ToggleSeleccionarTodos" title="Seleccionar todas las pendientes" />
+                    }
+                </th>
                 <th>Fecha</th>
                 <th>Activo</th>
                 <th>De</th>
@@ -58,6 +92,12 @@ else
             @foreach (var solicitud in solicitudes)
             {
                 <tr>
+                    <td>
+                        @if (solicitud.Estado == EstadoSolicitud.Pendiente)
+                        {
+                            <input type="checkbox" class="form-check-input" checked="@seleccionados.Contains(solicitud.Id)" @onchange="e => ToggleSeleccion(solicitud.Id, (bool)e.Value!)" />
+                        }
+                    </td>
                     <td>@solicitud.FechaSolicitud.ToString("dd/MM/yyyy HH:mm")</td>
                     <td>@solicitud.Asignacion.Activo.Placa</td>
                     <td>
@@ -137,6 +177,16 @@ else
     private string filaAccionTipo = "";
     private string rechazoComentario = "";
 
+    private readonly HashSet<int> seleccionados = [];
+    private string bulkAccion = "aprobar";
+    private string bulkRechazoComentario = "";
+
+    private List<SolicitudCorreccionAsignacion> PendientesVisibles =>
+        solicitudes?.Where(s => s.Estado == EstadoSolicitud.Pendiente).ToList() ?? [];
+
+    private bool TodosSeleccionados =>
+        PendientesVisibles.Count > 0 && PendientesVisibles.All(s => seleccionados.Contains(s.Id));
+
     protected override async Task OnInitializedAsync()
     {
         await CargarAsync();
@@ -159,6 +209,9 @@ else
         }
 
         solicitudes = await query.OrderByDescending(s => s.FechaSolicitud).ToListAsync();
+
+        var idsVigentes = solicitudes.Select(s => s.Id).ToHashSet();
+        seleccionados.RemoveWhere(id => !idsVigentes.Contains(id));
     }
 
     private void AbrirRechazar(SolicitudCorreccionAsignacion solicitud)
@@ -174,6 +227,148 @@ else
     {
         filaAccionId = null;
         filaAccionTipo = "";
+    }
+
+    private void ToggleSeleccion(int solicitudId, bool marcado)
+    {
+        if (marcado)
+        {
+            seleccionados.Add(solicitudId);
+        }
+        else
+        {
+            seleccionados.Remove(solicitudId);
+        }
+    }
+
+    private void ToggleSeleccionarTodos(ChangeEventArgs e)
+    {
+        var marcar = e.Value is bool valor && valor;
+
+        if (!marcar)
+        {
+            seleccionados.Clear();
+            return;
+        }
+
+        foreach (var solicitud in PendientesVisibles)
+        {
+            seleccionados.Add(solicitud.Id);
+        }
+    }
+
+    private void LimpiarSeleccion()
+    {
+        seleccionados.Clear();
+        bulkAccion = "aprobar";
+        bulkRechazoComentario = "";
+        errorMessage = null;
+    }
+
+    private void AbrirAprobarTodas()
+    {
+        seleccionados.Clear();
+        foreach (var solicitud in PendientesVisibles)
+        {
+            seleccionados.Add(solicitud.Id);
+        }
+        bulkAccion = "aprobar";
+        errorMessage = null;
+        mensaje = null;
+    }
+
+    private void AbrirRechazarTodas()
+    {
+        seleccionados.Clear();
+        foreach (var solicitud in PendientesVisibles)
+        {
+            seleccionados.Add(solicitud.Id);
+        }
+        bulkAccion = "rechazar";
+        bulkRechazoComentario = "";
+        errorMessage = null;
+        mensaje = null;
+    }
+
+    private async Task ConfirmarAprobarMasivoAsync()
+    {
+        if (procesando)
+        {
+            return;
+        }
+
+        procesando = true;
+        try
+        {
+            errorMessage = null;
+            mensaje = null;
+
+            var idsSeleccionados = seleccionados.ToList();
+            var usuarioId = await CurrentUser.ObtenerUsuarioActualIdAsync();
+
+            var aprobadas = 0;
+            var fallidas = 0;
+
+            foreach (var solicitudId in idsSeleccionados)
+            {
+                try
+                {
+                    await SolicitudCorreccion.AprobarAsync(solicitudId, usuarioId);
+                    aprobadas++;
+                }
+                catch (InvalidOperationException)
+                {
+                    fallidas++;
+                }
+            }
+
+            LimpiarSeleccion();
+            await CargarAsync();
+
+            if (fallidas > 0)
+            {
+                errorMessage = $"{aprobadas} aprobada(s). {fallidas} no se pudieron aprobar (ya resueltas o la asignación ya no cumple las condiciones).";
+            }
+            else
+            {
+                mensaje = $"{aprobadas} solicitud(es) aprobada(s).";
+            }
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+    private async Task ConfirmarRechazarMasivoAsync()
+    {
+        if (procesando)
+        {
+            return;
+        }
+
+        procesando = true;
+        try
+        {
+            errorMessage = null;
+            mensaje = null;
+
+            var idsSeleccionados = seleccionados.ToList();
+            var usuarioId = await CurrentUser.ObtenerUsuarioActualIdAsync();
+
+            foreach (var solicitudId in idsSeleccionados)
+            {
+                await SolicitudCorreccion.RechazarAsync(solicitudId, usuarioId, bulkRechazoComentario);
+            }
+
+            mensaje = $"{idsSeleccionados.Count} solicitud(es) rechazada(s).";
+            LimpiarSeleccion();
+            await CargarAsync();
+        }
+        finally
+        {
+            procesando = false;
+        }
     }
 
     private async Task AprobarAsync(SolicitudCorreccionAsignacion solicitud)

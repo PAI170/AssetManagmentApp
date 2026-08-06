@@ -64,17 +64,40 @@
     private void AlternarMenu() => mostrarMenu = !mostrarMenu;
 
     private int pendientes;
+    private readonly CancellationTokenSource cts = new();
 
     protected override async Task OnInitializedAsync()
     {
         Navigation.LocationChanged += OnLocationChanged;
         await CargarPendientesAsync();
+        _ = SondearPendientesAsync(cts.Token);
     }
 
     private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
         await CargarPendientesAsync();
         await InvokeAsync(StateHasChanged);
+    }
+
+    // El circuito de Blazor Server no genera trafico HTTP mientras el usuario interactua
+    // dentro de una pagina (todo va por el WebSocket), asi que la campanita solo se
+    // refrescaba al navegar. Este sondeo periodico la mantiene al dia aunque el usuario
+    // se quede quieto en una sola pantalla.
+    private async Task SondearPendientesAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(20));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                await CargarPendientesAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Componente destruido (navegacion fuera del layout, circuito cerrado, etc.).
+        }
     }
 
     private async Task CargarPendientesAsync()
@@ -86,5 +109,7 @@
     public void Dispose()
     {
         Navigation.LocationChanged -= OnLocationChanged;
+        cts.Cancel();
+        cts.Dispose();
     }
 }
