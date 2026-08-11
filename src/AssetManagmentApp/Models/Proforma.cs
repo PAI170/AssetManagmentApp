@@ -10,6 +10,7 @@ public class Proforma
     public DateOnly PeriodoDesde { get; set; }
     public DateOnly PeriodoHasta { get; set; }
     public decimal Total { get; set; }
+    public decimal? TipoCambio { get; set; }
     public int UsuarioGeneroId { get; set; }
     public ApplicationUser UsuarioGenero { get; set; } = null!;
     public bool EnviadaPorCorreo { get; set; }

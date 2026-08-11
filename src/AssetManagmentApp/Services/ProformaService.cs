@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AssetManagmentApp.Services;
 
-public class ProformaService(AppDbContext db)
+public class ProformaService(AppDbContext db, TipoCambioService tipoCambioService)
 {
     public async Task<List<ProformaLineaPreview>> CalcularDetalleAsync(int proyectoId, DateOnly fechaCorte)
     {
@@ -152,6 +152,7 @@ public class ProformaService(AppDbContext db)
         }
 
         var fechaGeneracion = DateTime.Now;
+        var tipoCambio = await tipoCambioService.ObtenerVentaDelDiaAsync();
 
         var proforma = new Proforma
         {
@@ -161,6 +162,7 @@ public class ProformaService(AppDbContext db)
             PeriodoDesde = lineas.Min(l => l.PeriodoDesde),
             PeriodoHasta = fechaCorte,
             Total = lineas.Sum(l => l.Subtotal),
+            TipoCambio = tipoCambio,
             UsuarioGeneroId = usuarioId,
             EnviadaPorCorreo = false,
             Estado = EstadoProforma.Generada

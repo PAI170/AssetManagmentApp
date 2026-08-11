@@ -63,6 +63,7 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<ProformaService>();
+builder.Services.AddScoped<TipoCambioService>();
 builder.Services.AddScoped<SidebarState>();
 builder.Services.AddScoped<CurrentUserService>();
 builder.Services.AddScoped<SolicitudCorreccionService>();
