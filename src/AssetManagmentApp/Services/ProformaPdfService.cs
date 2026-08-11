@@ -85,12 +85,12 @@ public static class ProformaPdfService
                             table.Cell().Text(linea.TipoEquipoNombre);
                             table.Cell().AlignRight().Text(linea.Cantidad.ToString());
                             table.Cell().AlignRight().Text(linea.DiasCobrados.ToString());
-                            table.Cell().AlignRight().Text($"₡{linea.PrecioPorDiaUsado:N2}");
-                            table.Cell().AlignRight().Text($"₡{linea.Subtotal:N2}");
+                            table.Cell().AlignRight().Text(linea.PrecioPorDiaUsado.ToMoneda());
+                            table.Cell().AlignRight().Text(linea.Subtotal.ToMoneda());
                         }
                     });
 
-                    col.Item().PaddingTop(10).AlignRight().Text($"Total: ₡{proforma.Total:N2}").FontSize(13).Bold();
+                    col.Item().PaddingTop(10).AlignRight().Text($"Total: {proforma.Total.ToMoneda()}").FontSize(13).Bold();
                 });
 
                 page.Footer().AlignCenter().Text(x =>

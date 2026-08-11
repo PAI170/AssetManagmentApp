@@ -23,7 +23,7 @@ else
         <div class="col-md-6">
             <div class="dashboard-card accent-orange delay-1 h-100">
                 <div class="dashboard-card-title">Total facturado por proyecto</div>
-                <div class="dashboard-stat">₡@TotalFacturadoAnimado.ToString("N2")</div>
+                <div class="dashboard-stat">@TotalFacturadoAnimado.ToMoneda()</div>
                 <p class="dashboard-card-subtitle">Consumo acumulado desde el último corte (última proforma generada) de cada proyecto.</p>
                 @if (totalesPorProyecto is { Count: > 0 })
                 {
@@ -34,7 +34,7 @@ else
                                 {
                                     <tr>
                                         <td>@fila.ProyectoNombre</td>
-                                        <td class="text-end">₡@fila.Total.ToString("N2")</td>
+                                        <td class="text-end">@fila.Total.ToMoneda()</td>
                                     </tr>
                                 }
                             </tbody>

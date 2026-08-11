@@ -25,7 +25,7 @@ else
         <thead>
             <tr>
                 <th>Nombre</th>
-                <th>Precio por día (₡)</th>
+                <th>Precio por día ($)</th>
                 <th>Descripción</th>
                 <th></th>
             </tr>
@@ -55,7 +55,7 @@ else
                     else
                     {
                         <td>@tipo.Nombre</td>
-                        <td>@tipo.PrecioPorDia.ToString("N2")</td>
+                        <td>@tipo.PrecioPorDia.ToMoneda()</td>
                         <td>@tipo.Descripcion</td>
                         <td>
                             <AuthorizeView Roles="Admin">
