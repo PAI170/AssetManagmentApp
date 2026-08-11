@@ -7,45 +7,104 @@ namespace AssetManagmentApp.Services;
 
 public static class ProformaPdfService
 {
+    private const string NombreEmpresa = "ACA Asesores Técnicos para Centroamérica y el Caribe";
+    private const string CedulaEmpresa = "3-101-157521";
+    private const string TelefonoEmpresa = "+506 8703-5064";
+    private const string CorreoEmpresa = "facturacion@acaasesores.com";
+    private const string DireccionEmpresa = "San José, Santa Ana, Río Oro";
+    private const string NombreContacto = "Rodolfo Bonilla";
+    private const decimal PorcentajeIva = 0.13m;
+
+    // El logo se coloca en wwwroot/images/logo-aca.png; si aún no existe (antes de que
+    // lo suban), el encabezado simplemente se genera sin imagen en vez de fallar.
+    private static readonly string RutaLogo = Path.Combine(AppContext.BaseDirectory, "wwwroot", "images", "logo-aca.jpg");
+
     public static byte[] Generar(Proforma proforma)
     {
+        var subtotal = proforma.Total;
+        var iva = Math.Round(subtotal * PorcentajeIva, 2);
+        var total = subtotal + iva;
+        var fechaVencimiento = proforma.FechaGeneracion.AddDays(30);
+
         var documento = Document.Create(container =>
         {
             container.Page(page =>
             {
                 page.Size(PageSizes.Letter);
                 page.Margin(2, Unit.Centimetre);
-                page.DefaultTextStyle(x => x.FontSize(10));
+                page.DefaultTextStyle(x => x.FontSize(9));
 
                 page.Header().Column(col =>
                 {
-                    col.Item().Text("Rodcast Solutions").FontSize(18).Bold();
-                    col.Item().Text("Proforma").FontSize(14).SemiBold();
-                    col.Item().PaddingTop(5).LineHorizontal(1);
+                    col.Item().Row(row =>
+                    {
+                        row.ConstantItem(80).Height(60).Element(logoContainer =>
+                        {
+                            if (File.Exists(RutaLogo))
+                            {
+                                logoContainer.Image(RutaLogo).FitArea();
+                            }
+                        });
+
+                        row.RelativeItem().PaddingLeft(10).Column(c =>
+                        {
+                            c.Item().Text(NombreEmpresa).FontSize(13).Bold();
+                            c.Item().Text($"Cédula: {CedulaEmpresa}");
+                            c.Item().Text($"Tel.: {TelefonoEmpresa}");
+                            c.Item().Text($"E-mail: {CorreoEmpresa}");
+                            c.Item().Text(DireccionEmpresa);
+                        });
+
+                        row.ConstantItem(150).Border(1).Padding(6).Column(c =>
+                        {
+                            c.Item().AlignCenter().Text("PROFORMA").Bold().FontSize(12);
+                            c.Item().PaddingTop(4).Text($"Fecha: {proforma.FechaGeneracion:dd/MM/yyyy}");
+                            c.Item().Text("Moneda: USD");
+                            c.Item().Text(proforma.TipoCambio is { } tipoCambio
+                                ? $"Tipo de cambio: ₡{tipoCambio:N2}"
+                                : "Tipo de cambio: N/D");
+                        });
+                    });
+
+                    col.Item().PaddingTop(8).LineHorizontal(1);
                 });
 
                 page.Content().PaddingVertical(10).Column(col =>
                 {
-                    col.Spacing(5);
+                    col.Spacing(6);
+
+                    col.Item().Border(1).Padding(6).Row(row =>
+                    {
+                        row.RelativeItem().Text($"Proforma: {proforma.Numero}").Bold();
+                        row.RelativeItem().Text($"Período: {proforma.PeriodoDesde:dd/MM/yyyy} - {proforma.PeriodoHasta:dd/MM/yyyy}");
+                    });
 
                     col.Item().Row(row =>
                     {
-                        row.RelativeItem().Column(c =>
+                        row.RelativeItem().Border(1).Padding(6).Column(c =>
                         {
-                            c.Item().Text($"Proforma No. {proforma.Numero}").Bold();
-                            c.Item().Text($"Fecha de generación: {proforma.FechaGeneracion:dd/MM/yyyy}");
-                            c.Item().Text($"Período: {proforma.PeriodoDesde:dd/MM/yyyy} - {proforma.PeriodoHasta:dd/MM/yyyy}");
+                            c.Item().Text("Proyecto:").Bold();
+                            c.Item().Text(proforma.Proyecto.Nombre);
+                            c.Item().PaddingTop(4).Text("Dirección:").Bold();
+                            c.Item().Text(proforma.Proyecto.Direccion);
                         });
-                        row.RelativeItem().Column(c =>
+
+                        row.RelativeItem().Border(1).Padding(6).Column(c =>
                         {
-                            c.Item().AlignRight().Text("Proyecto").Bold();
-                            c.Item().AlignRight().Text(proforma.Proyecto.Nombre);
-                            c.Item().AlignRight().Text(proforma.Proyecto.Direccion);
-                            c.Item().AlignRight().Text($"Ingeniero a cargo: {proforma.Proyecto.IngenieroACargo}");
+                            c.Item().Text("Medio de pago:").Bold();
+                            c.Item().Text("Transferencia - Depósito Bancario");
+                            c.Item().PaddingTop(4).Text("Fecha de vencimiento:").Bold();
+                            c.Item().Text(fechaVencimiento.ToString("dd/MM/yyyy"));
                         });
                     });
 
-                    col.Item().PaddingTop(10).Table(table =>
+                    col.Item().Border(1).Padding(6).Row(row =>
+                    {
+                        row.RelativeItem().Text($"Contacto: {NombreContacto}");
+                        row.RelativeItem().AlignRight().Text($"Teléfono: {TelefonoEmpresa}");
+                    });
+
+                    col.Item().PaddingTop(6).Table(table =>
                     {
                         table.ColumnsDefinition(columns =>
                         {
@@ -90,7 +149,35 @@ public static class ProformaPdfService
                         }
                     });
 
-                    col.Item().PaddingTop(10).AlignRight().Text($"Total: {proforma.Total.ToMoneda()}").FontSize(13).Bold();
+                    col.Item().PaddingTop(6).Row(row =>
+                    {
+                        row.RelativeItem(3).Column(c =>
+                        {
+                            c.Item().Text("Observaciones:").Bold();
+                            c.Item().PaddingTop(2).Border(1).MinHeight(60);
+                        });
+
+                        row.ConstantItem(20);
+
+                        row.RelativeItem(2).Column(c =>
+                        {
+                            c.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text("Subtotal:");
+                                r.RelativeItem().AlignRight().Text(subtotal.ToMoneda());
+                            });
+                            c.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text("IVA (13%):");
+                                r.RelativeItem().AlignRight().Text(iva.ToMoneda());
+                            });
+                            c.Item().PaddingTop(3).BorderTop(1).PaddingTop(3).Row(r =>
+                            {
+                                r.RelativeItem().Text("Total:").Bold().FontSize(12);
+                                r.RelativeItem().AlignRight().Text(total.ToMoneda()).Bold().FontSize(12);
+                            });
+                        });
+                    });
                 });
 
                 page.Footer().AlignCenter().Text(x =>
