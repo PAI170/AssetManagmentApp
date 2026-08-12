@@ -29,6 +29,9 @@ public class ProformaService(AppDbContext db, TipoCambioService tipoCambioServic
             .GroupBy(h => h.TipoEquipoId)
             .ToDictionary(g => g.Key, g => g.OrderBy(h => h.VigenteDesde).ToList());
 
+        var activoIds = asignaciones.Select(a => a.ActivoId).Distinct().ToList();
+        var cambiosEstadoPorActivo = await ObtenerCambiosEstadoPorActivoAsync(activoIds);
+
         var lineas = new List<ProformaLineaPreview>();
 
         foreach (var asignacion in asignaciones)
@@ -46,24 +49,32 @@ public class ProformaService(AppDbContext db, TipoCambioService tipoCambioServic
                 ? lista
                 : [];
 
-            foreach (var tramo in PartirPorCambioDePrecio(asignacion.FechaUltimoCobro, hastaExclusive, historial))
-            {
-                var dias = tramo.HastaExclusive.DayNumber - tramo.Desde.DayNumber;
-                var subtotal = Math.Round(tramo.Precio * dias, 2);
+            var intervalosDanado = ObtenerIntervalosDanado(
+                cambiosEstadoPorActivo.TryGetValue(asignacion.ActivoId, out var cambios) ? cambios : [],
+                hastaExclusive);
+            var rangosFacturables = RestarIntervalos(asignacion.FechaUltimoCobro, hastaExclusive, intervalosDanado);
 
-                lineas.Add(new ProformaLineaPreview
+            foreach (var rango in rangosFacturables)
+            {
+                foreach (var tramo in PartirPorCambioDePrecio(rango.Desde, rango.HastaExclusive, historial))
                 {
-                    AsignacionId = asignacion.Id,
-                    ActivoId = asignacion.ActivoId,
-                    Placa = asignacion.Activo.Placa,
-                    TipoEquipoNombre = asignacion.Activo.TipoEquipo.Nombre,
-                    PrecioPorDiaUsado = tramo.Precio,
-                    DiasCobrados = dias,
-                    Subtotal = subtotal,
-                    PeriodoDesde = tramo.Desde,
-                    PeriodoHastaExclusive = tramo.HastaExclusive,
-                    NuevaFechaUltimoCobro = hastaExclusive
-                });
+                    var dias = tramo.HastaExclusive.DayNumber - tramo.Desde.DayNumber;
+                    var subtotal = Math.Round(tramo.Precio * dias, 2);
+
+                    lineas.Add(new ProformaLineaPreview
+                    {
+                        AsignacionId = asignacion.Id,
+                        ActivoId = asignacion.ActivoId,
+                        Placa = asignacion.Activo.Placa,
+                        TipoEquipoNombre = asignacion.Activo.TipoEquipo.Nombre,
+                        PrecioPorDiaUsado = tramo.Precio,
+                        DiasCobrados = dias,
+                        Subtotal = subtotal,
+                        PeriodoDesde = tramo.Desde,
+                        PeriodoHastaExclusive = tramo.HastaExclusive,
+                        NuevaFechaUltimoCobro = hastaExclusive
+                    });
+                }
             }
         }
 
@@ -103,6 +114,9 @@ public class ProformaService(AppDbContext db, TipoCambioService tipoCambioServic
             .GroupBy(h => h.TipoEquipoId)
             .ToDictionary(g => g.Key, g => g.OrderBy(h => h.VigenteDesde).ToList());
 
+        var activoIds = asignaciones.Select(a => a.ActivoId).Distinct().ToList();
+        var cambiosEstadoPorActivo = await ObtenerCambiosEstadoPorActivoAsync(activoIds);
+
         var totalesPorProyecto = new Dictionary<int, (string Nombre, decimal Total)>();
 
         foreach (var asignacion in asignaciones)
@@ -120,11 +134,19 @@ public class ProformaService(AppDbContext db, TipoCambioService tipoCambioServic
                 ? lista
                 : [];
 
+            var intervalosDanado = ObtenerIntervalosDanado(
+                cambiosEstadoPorActivo.TryGetValue(asignacion.ActivoId, out var cambios) ? cambios : [],
+                hastaExclusive);
+            var rangosFacturables = RestarIntervalos(asignacion.FechaUltimoCobro, hastaExclusive, intervalosDanado);
+
             decimal subtotalAsignacion = 0;
-            foreach (var tramo in PartirPorCambioDePrecio(asignacion.FechaUltimoCobro, hastaExclusive, historial))
+            foreach (var rango in rangosFacturables)
             {
-                var dias = tramo.HastaExclusive.DayNumber - tramo.Desde.DayNumber;
-                subtotalAsignacion += Math.Round(tramo.Precio * dias, 2);
+                foreach (var tramo in PartirPorCambioDePrecio(rango.Desde, rango.HastaExclusive, historial))
+                {
+                    var dias = tramo.HastaExclusive.DayNumber - tramo.Desde.DayNumber;
+                    subtotalAsignacion += Math.Round(tramo.Precio * dias, 2);
+                }
             }
 
             if (subtotalAsignacion == 0)
@@ -252,5 +274,86 @@ public class ProformaService(AppDbContext db, TipoCambioService tipoCambioServic
                 yield return (tramoDesde, tramoHasta, h.Precio);
             }
         }
+    }
+
+    private async Task<Dictionary<int, List<Movimiento>>> ObtenerCambiosEstadoPorActivoAsync(List<int> activoIds)
+    {
+        var movimientos = await db.Movimientos
+            .AsNoTracking()
+            .Where(m => activoIds.Contains(m.ActivoId) && m.TipoMovimiento == TipoMovimiento.CambioDeEstado)
+            .ToListAsync();
+
+        return movimientos
+            .GroupBy(m => m.ActivoId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(m => m.FechaMovimiento).ToList());
+    }
+
+    // Un activo Dañado no se factura mientras lo está: se reconstruyen los tramos "Dañado"
+    // de todo el historial de cambios de estado del activo (no solo dentro de la ventana a
+    // facturar) para no perder un tramo que empezó antes de FechaUltimoCobro. Si el activo
+    // sigue Dañado (no hay cambio de salida registrado), el tramo se extiende hasta el límite
+    // pedido (fechaCorte/FechaSalida de la asignación).
+    private static List<(DateOnly Desde, DateOnly HastaExclusive)> ObtenerIntervalosDanado(
+        List<Movimiento> cambiosEstadoActivo, DateOnly limiteHastaExclusive)
+    {
+        var intervalos = new List<(DateOnly Desde, DateOnly HastaExclusive)>();
+        DateOnly? inicioDanado = null;
+
+        foreach (var m in cambiosEstadoActivo)
+        {
+            var fecha = DateOnly.FromDateTime(m.FechaMovimiento);
+            if (m.EstadoNuevo == EstadoActivo.Danado)
+            {
+                inicioDanado ??= fecha;
+            }
+            else if (inicioDanado is not null)
+            {
+                intervalos.Add((inicioDanado.Value, fecha));
+                inicioDanado = null;
+            }
+        }
+
+        if (inicioDanado is not null)
+        {
+            intervalos.Add((inicioDanado.Value, limiteHastaExclusive));
+        }
+
+        return intervalos;
+    }
+
+    // Resta los intervalos "a excluir" (p. ej. tramos Dañado) del rango [desde, hastaExclusive),
+    // devolviendo los sub-rangos facturables restantes.
+    private static List<(DateOnly Desde, DateOnly HastaExclusive)> RestarIntervalos(
+        DateOnly desde, DateOnly hastaExclusive, List<(DateOnly Desde, DateOnly HastaExclusive)> aExcluir)
+    {
+        var resultado = new List<(DateOnly Desde, DateOnly HastaExclusive)> { (desde, hastaExclusive) };
+
+        foreach (var (excluirDesde, excluirHasta) in aExcluir)
+        {
+            var siguiente = new List<(DateOnly Desde, DateOnly HastaExclusive)>();
+            foreach (var (rangoDesde, rangoHasta) in resultado)
+            {
+                var solapaDesde = excluirDesde > rangoDesde ? excluirDesde : rangoDesde;
+                var solapaHasta = excluirHasta < rangoHasta ? excluirHasta : rangoHasta;
+
+                if (solapaHasta <= solapaDesde)
+                {
+                    siguiente.Add((rangoDesde, rangoHasta));
+                    continue;
+                }
+
+                if (rangoDesde < solapaDesde)
+                {
+                    siguiente.Add((rangoDesde, solapaDesde));
+                }
+                if (solapaHasta < rangoHasta)
+                {
+                    siguiente.Add((solapaHasta, rangoHasta));
+                }
+            }
+            resultado = siguiente;
+        }
+
+        return resultado;
     }
 }
