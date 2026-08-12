@@ -1091,15 +1091,16 @@ else
             var usuarioId = await CurrentUser.ObtenerUsuarioActualIdAsync();
 
             var enviadas = 0;
-            var omitidos = 0;
+            var omitidos = new List<(string Placa, string Motivo)>();
 
             foreach (var activoId in idsSeleccionados)
             {
-                var proyectoActualId = activos?.FirstOrDefault(a => a.Id == activoId)?.ProyectoActualId;
+                var activo = activos?.FirstOrDefault(a => a.Id == activoId);
+                var proyectoActualId = activo?.ProyectoActualId;
 
                 if (proyectoActualId is null || !asignacionIdPorActivo.TryGetValue(activoId, out var asignacionId))
                 {
-                    omitidos++;
+                    omitidos.Add((activo?.Placa ?? $"#{activoId}", "no tiene una asignación abierta que se pueda corregir"));
                     continue;
                 }
 
@@ -1108,9 +1109,9 @@ else
                     await SolicitudCorreccion.CrearAsync(asignacionId, proyectoActualId.Value, bulkFechaCorreccion, bulkMotivoCorreccion, usuarioId);
                     enviadas++;
                 }
-                catch (InvalidOperationException)
+                catch (InvalidOperationException ex)
                 {
-                    omitidos++;
+                    omitidos.Add((activo?.Placa ?? $"#{activoId}", ex.Message));
                 }
             }
 
@@ -1118,9 +1119,10 @@ else
             bulkMotivoCorreccion = "";
             await CargarActivosAsync();
 
-            if (omitidos > 0)
+            if (omitidos.Count > 0)
             {
-                errorMessage = $"{enviadas} solicitud(es) enviada(s). {omitidos} activo(s) se omitieron (no elegibles o ya tienen una solicitud pendiente).";
+                var detalle = string.Join(" · ", omitidos.Select(o => $"{o.Placa} ({o.Motivo})"));
+                errorMessage = $"{enviadas} solicitud(es) enviada(s). {omitidos.Count} activo(s) omitido(s): {detalle}";
             }
             else
             {
