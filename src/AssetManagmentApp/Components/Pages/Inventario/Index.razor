@@ -877,7 +877,26 @@ else
             });
 
             activo.Estado = EstadoActivo.Disponible;
-            activo.ProyectoActualId = null;
+
+            // Al retornar, el activo pasa a la bodega (proyecto especial EsBodega, no factura)
+            // en vez de quedar sin proyecto, para que "qué hay en bodega" se pueda ver
+            // filtrando por ese proyecto.
+            var bodega = await Db.Proyectos.AsNoTracking().FirstOrDefaultAsync(p => p.EsBodega);
+            if (bodega is not null)
+            {
+                Db.AsignacionesActivoProyecto.Add(new AsignacionActivoProyecto
+                {
+                    ActivoId = activo.Id,
+                    ProyectoId = bodega.Id,
+                    FechaIngreso = accionFechaTraslado,
+                    FechaUltimoCobro = accionFechaTraslado
+                });
+                activo.ProyectoActualId = bodega.Id;
+            }
+            else
+            {
+                activo.ProyectoActualId = null;
+            }
 
             await Db.SaveChangesAsync();
 

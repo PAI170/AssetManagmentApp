@@ -28,13 +28,16 @@ else
 
     <div class="page-card">
 
-    <div class="card mb-4">
-        <div class="card-body">
-            <h5 class="card-title">Total gastado a la fecha</h5>
-            <p class="fs-3 mb-0">@((totalFacturado + totalPendiente).ToMoneda())</p>
-            <p class="text-muted mb-0">Facturado: @totalFacturado.ToMoneda() · Pendiente de facturar: @totalPendiente.ToMoneda()</p>
+    @if (!proyecto.EsBodega)
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Total gastado a la fecha</h5>
+                <p class="fs-3 mb-0">@((totalFacturado + totalPendiente).ToMoneda())</p>
+                <p class="text-muted mb-0">Facturado: @totalFacturado.ToMoneda() · Pendiente de facturar: @totalPendiente.ToMoneda()</p>
+            </div>
         </div>
-    </div>
+    }
 
     <div class="dashboard-card accent-navy delay-1 mb-4">
         <div class="dashboard-card-title">Equipo actualmente asignado</div>
@@ -110,6 +113,15 @@ else
         }
     </div>
 
+    @if (proyecto.EsBodega)
+    {
+        <div class="dashboard-card accent-orange delay-3">
+            <div class="dashboard-card-title">Historial de proformas</div>
+            <p class="text-muted small mb-0">Este proyecto es la bodega; no se factura.</p>
+        </div>
+    }
+    else
+    {
     <div class="dashboard-card accent-orange delay-3">
         <div class="dashboard-card-title">Historial de proformas</div>
 
@@ -230,6 +242,7 @@ else
     }
 
     </div>
+    }
 
     </div>
 }

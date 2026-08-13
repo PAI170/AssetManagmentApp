@@ -8,6 +8,12 @@ public class ProformaService(AppDbContext db, TipoCambioService tipoCambioServic
 {
     public async Task<List<ProformaLineaPreview>> CalcularDetalleAsync(int proyectoId, DateOnly fechaCorte)
     {
+        var esBodega = await db.Proyectos.AsNoTracking().Where(p => p.Id == proyectoId).Select(p => p.EsBodega).FirstOrDefaultAsync();
+        if (esBodega)
+        {
+            return [];
+        }
+
         var asignaciones = await db.AsignacionesActivoProyecto
             .AsNoTracking()
             .Include(a => a.Activo).ThenInclude(a => a.TipoEquipo)
@@ -92,7 +98,8 @@ public class ProformaService(AppDbContext db, TipoCambioService tipoCambioServic
             .Include(a => a.Activo).ThenInclude(a => a.TipoEquipo)
             .Include(a => a.Proyecto)
             .Where(a => a.FechaUltimoCobro < fechaCorte
-                && (a.FechaSalida == null || a.FechaUltimoCobro < a.FechaSalida));
+                && (a.FechaSalida == null || a.FechaUltimoCobro < a.FechaSalida)
+                && !a.Proyecto.EsBodega);
 
         if (proyectoId is not null)
         {
