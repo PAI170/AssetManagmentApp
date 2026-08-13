@@ -30,6 +30,7 @@ else
                 <th>Ingeniero a cargo</th>
                 <th>Estado</th>
                 <th>Fecha creación</th>
+                <th>Requisa (Proyecto / Modelo / Obra / Actividad)</th>
                 <th></th>
             </tr>
         </thead>
@@ -50,6 +51,14 @@ else
                         </td>
                         <td>@proyecto.FechaCreacion.ToString("dd/MM/yyyy")</td>
                         <td>
+                            <div class="d-flex gap-1">
+                                <InputNumber class="form-control form-control-sm" placeholder="Proyecto" @bind-Value="edicion.CodigoProyecto" />
+                                <InputNumber class="form-control form-control-sm" placeholder="Modelo" @bind-Value="edicion.Modelo" />
+                                <InputNumber class="form-control form-control-sm" placeholder="Obra" @bind-Value="edicion.Obra" />
+                                <InputNumber class="form-control form-control-sm" placeholder="Actividad" @bind-Value="edicion.Actividad" />
+                            </div>
+                        </td>
+                        <td>
                             <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicionAsync(proyecto)">Guardar</button>
                             <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
                         </td>
@@ -61,6 +70,16 @@ else
                         <td>@proyecto.IngenieroACargo</td>
                         <td>@proyecto.Estado</td>
                         <td>@proyecto.FechaCreacion.ToString("dd/MM/yyyy")</td>
+                        <td>
+                            @if (proyecto.CodigoProyecto is not null)
+                            {
+                                @($"{proyecto.CodigoProyecto} / {proyecto.Modelo} / {proyecto.Obra} / {proyecto.Actividad}")
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
                         <td>
                             <button class="btn btn-sm btn-outline-secondary" @onclick="() => VerDetalle(proyecto)">Ver detalle</button>
                             <AuthorizeView Roles="Admin">
@@ -103,7 +122,11 @@ else
             Nombre = proyecto.Nombre,
             Direccion = proyecto.Direccion,
             IngenieroACargo = proyecto.IngenieroACargo,
-            Estado = proyecto.Estado
+            Estado = proyecto.Estado,
+            CodigoProyecto = proyecto.CodigoProyecto,
+            Modelo = proyecto.Modelo,
+            Obra = proyecto.Obra,
+            Actividad = proyecto.Actividad
         };
     }
 
@@ -128,6 +151,10 @@ else
         proyecto.Direccion = edicion.Direccion.Trim();
         proyecto.IngenieroACargo = edicion.IngenieroACargo.Trim();
         proyecto.Estado = edicion.Estado;
+        proyecto.CodigoProyecto = edicion.CodigoProyecto;
+        proyecto.Modelo = edicion.Modelo;
+        proyecto.Obra = edicion.Obra;
+        proyecto.Actividad = edicion.Actividad;
 
         await Db.SaveChangesAsync();
         Db.ChangeTracker.Clear();
@@ -152,5 +179,9 @@ else
         public string IngenieroACargo { get; set; } = string.Empty;
 
         public EstadoProyecto Estado { get; set; } = EstadoProyecto.Activo;
+        public int? CodigoProyecto { get; set; }
+        public int? Modelo { get; set; }
+        public int? Obra { get; set; }
+        public int? Actividad { get; set; }
     }
 }

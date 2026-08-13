@@ -20,6 +20,10 @@
         <InputText class="form-control" @bind-Value="nuevoTipo.Nombre" />
     </div>
     <div class="mb-2">
+        <label class="form-label">Código de alquiler (opcional)</label>
+        <InputText class="form-control" @bind-Value="nuevoTipo.CodigoAlquiler" />
+    </div>
+    <div class="mb-2">
         <label class="form-label">Precio por día ($)</label>
         <InputNumber class="form-control" @bind-Value="nuevoTipo.PrecioPorDia" />
     </div>
@@ -50,6 +54,7 @@
         var tipo = new TipoEquipo
         {
             Nombre = nuevoTipo.Nombre.Trim(),
+            CodigoAlquiler = string.IsNullOrWhiteSpace(nuevoTipo.CodigoAlquiler) ? null : nuevoTipo.CodigoAlquiler.Trim(),
             PrecioPorDia = nuevoTipo.PrecioPorDia,
             Descripcion = string.IsNullOrWhiteSpace(nuevoTipo.Descripcion) ? null : nuevoTipo.Descripcion.Trim()
         };
@@ -72,6 +77,8 @@
     {
         [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "El nombre es obligatorio")]
         public string Nombre { get; set; } = string.Empty;
+
+        public string? CodigoAlquiler { get; set; }
 
         [System.ComponentModel.DataAnnotations.Range(0.01, double.MaxValue, ErrorMessage = "El precio debe ser mayor a 0")]
         public decimal PrecioPorDia { get; set; }

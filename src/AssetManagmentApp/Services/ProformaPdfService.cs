@@ -128,10 +128,11 @@ public static class ProformaPdfService
                         // La placa es un dato interno del activo; al cliente se le muestra
                         // el tipo de equipo agrupado con la cantidad de unidades facturadas.
                         var lineasAgrupadas = proforma.Detalles
-                            .GroupBy(d => (d.TipoEquipoNombre, d.DiasCobrados, d.PrecioPorDiaUsado))
+                            .GroupBy(d => (d.TipoEquipoNombre, d.CodigoAlquiler, d.DiasCobrados, d.PrecioPorDiaUsado))
                             .Select(g => new
                             {
                                 g.Key.TipoEquipoNombre,
+                                g.Key.CodigoAlquiler,
                                 Cantidad = g.Count(),
                                 g.Key.DiasCobrados,
                                 g.Key.PrecioPorDiaUsado,
@@ -141,7 +142,7 @@ public static class ProformaPdfService
 
                         foreach (var linea in lineasAgrupadas)
                         {
-                            table.Cell().Text(linea.TipoEquipoNombre);
+                            table.Cell().Text(DescripcionLinea(linea.TipoEquipoNombre, linea.CodigoAlquiler, proforma.Proyecto));
                             table.Cell().AlignRight().Text(linea.Cantidad.ToString());
                             table.Cell().AlignRight().Text(linea.DiasCobrados.ToString());
                             table.Cell().AlignRight().Text(linea.PrecioPorDiaUsado.ToMoneda());
@@ -189,5 +190,18 @@ public static class ProformaPdfService
         });
 
         return documento.GeneratePdf();
+    }
+
+    // "1662 Batidoras (159, 2, 426, 5)": el código de alquiler (si el tipo de equipo
+    // tiene uno) va de prefijo, y los códigos de requisa del proyecto (si están
+    // cargados) van entre paréntesis al final.
+    private static string DescripcionLinea(string tipoEquipoNombre, string? codigoAlquiler, Proyecto proyecto)
+    {
+        var prefijo = string.IsNullOrWhiteSpace(codigoAlquiler) ? "" : $"{codigoAlquiler} ";
+        var sufijo = proyecto.CodigoProyecto is null
+            ? ""
+            : $" ({proyecto.CodigoProyecto}, {proyecto.Modelo}, {proyecto.Obra}, {proyecto.Actividad})";
+
+        return $"{prefijo}{tipoEquipoNombre}{sufijo}";
     }
 }

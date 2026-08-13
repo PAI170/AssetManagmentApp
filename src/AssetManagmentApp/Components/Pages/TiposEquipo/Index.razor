@@ -25,6 +25,7 @@ else
         <thead>
             <tr>
                 <th>Nombre</th>
+                <th>Código</th>
                 <th>Precio por día ($)</th>
                 <th>Descripción</th>
                 <th></th>
@@ -37,6 +38,7 @@ else
                     @if (editandoId == tipo.Id)
                     {
                         <td><InputText class="form-control" @bind-Value="edicion.Nombre" /></td>
+                        <td><InputText class="form-control" @bind-Value="edicion.CodigoAlquiler" /></td>
                         <td><InputNumber class="form-control" @bind-Value="edicion.PrecioPorDia" /></td>
                         <td><InputText class="form-control" @bind-Value="edicion.Descripcion" /></td>
                         <td>
@@ -46,7 +48,7 @@ else
                     }
                     else if (eliminandoId == tipo.Id)
                     {
-                        <td colspan="3" class="text-danger">¿Eliminar "@tipo.Nombre"?</td>
+                        <td colspan="4" class="text-danger">¿Eliminar "@tipo.Nombre"?</td>
                         <td>
                             <button class="btn btn-sm btn-danger" @onclick="() => ConfirmarEliminarAsync(tipo)">Confirmar</button>
                             <button class="btn btn-sm btn-secondary" @onclick="CancelarEliminar">Cancelar</button>
@@ -55,6 +57,7 @@ else
                     else
                     {
                         <td>@tipo.Nombre</td>
+                        <td>@tipo.CodigoAlquiler</td>
                         <td>@tipo.PrecioPorDia.ToMoneda()</td>
                         <td>@tipo.Descripcion</td>
                         <td>
@@ -99,6 +102,7 @@ else
         edicion = new TipoEquipoFormModel
         {
             Nombre = tipo.Nombre,
+            CodigoAlquiler = tipo.CodigoAlquiler,
             PrecioPorDia = tipo.PrecioPorDia,
             Descripcion = tipo.Descripcion
         };
@@ -164,6 +168,7 @@ else
         }
 
         tipo.Nombre = edicion.Nombre.Trim();
+        tipo.CodigoAlquiler = string.IsNullOrWhiteSpace(edicion.CodigoAlquiler) ? null : edicion.CodigoAlquiler.Trim();
         tipo.Descripcion = string.IsNullOrWhiteSpace(edicion.Descripcion) ? null : edicion.Descripcion.Trim();
 
         if (edicion.PrecioPorDia != tipo.PrecioPorDia)
@@ -210,6 +215,8 @@ else
     {
         [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "El nombre es obligatorio")]
         public string Nombre { get; set; } = string.Empty;
+
+        public string? CodigoAlquiler { get; set; }
 
         [System.ComponentModel.DataAnnotations.Range(0.01, double.MaxValue, ErrorMessage = "El precio debe ser mayor a 0")]
         public decimal PrecioPorDia { get; set; }

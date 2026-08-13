@@ -27,6 +27,15 @@
         <label class="form-label">Ingeniero a cargo</label>
         <InputText class="form-control" @bind-Value="nuevoProyecto.IngenieroACargo" />
     </div>
+    <div class="mb-2">
+        <label class="form-label">Códigos de requisa (opcional)</label>
+        <div class="d-flex gap-1">
+            <InputNumber class="form-control" placeholder="Proyecto" @bind-Value="nuevoProyecto.CodigoProyecto" />
+            <InputNumber class="form-control" placeholder="Modelo" @bind-Value="nuevoProyecto.Modelo" />
+            <InputNumber class="form-control" placeholder="Obra" @bind-Value="nuevoProyecto.Obra" />
+            <InputNumber class="form-control" placeholder="Actividad" @bind-Value="nuevoProyecto.Actividad" />
+        </div>
+    </div>
     <div>
         <button type="submit" class="btn btn-success">Guardar</button>
         <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
@@ -51,7 +60,11 @@
             Direccion = nuevoProyecto.Direccion.Trim(),
             IngenieroACargo = nuevoProyecto.IngenieroACargo.Trim(),
             Estado = EstadoProyecto.Activo,
-            FechaCreacion = DateOnly.FromDateTime(DateTime.Now)
+            FechaCreacion = DateOnly.FromDateTime(DateTime.Now),
+            CodigoProyecto = nuevoProyecto.CodigoProyecto,
+            Modelo = nuevoProyecto.Modelo,
+            Obra = nuevoProyecto.Obra,
+            Actividad = nuevoProyecto.Actividad
         };
 
         Db.Proyectos.Add(proyecto);
@@ -71,5 +84,10 @@
 
         [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "El ingeniero a cargo es obligatorio")]
         public string IngenieroACargo { get; set; } = string.Empty;
+
+        public int? CodigoProyecto { get; set; }
+        public int? Modelo { get; set; }
+        public int? Obra { get; set; }
+        public int? Actividad { get; set; }
     }
 }

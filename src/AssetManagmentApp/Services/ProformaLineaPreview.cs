@@ -6,6 +6,7 @@ public class ProformaLineaPreview
     public int ActivoId { get; set; }
     public string Placa { get; set; } = string.Empty;
     public string TipoEquipoNombre { get; set; } = string.Empty;
+    public string? CodigoAlquiler { get; set; }
     public decimal PrecioPorDiaUsado { get; set; }
     public int DiasCobrados { get; set; }
     public decimal Subtotal { get; set; }

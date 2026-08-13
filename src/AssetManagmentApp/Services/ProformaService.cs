@@ -67,6 +67,7 @@ public class ProformaService(AppDbContext db, TipoCambioService tipoCambioServic
                         ActivoId = asignacion.ActivoId,
                         Placa = asignacion.Activo.Placa,
                         TipoEquipoNombre = asignacion.Activo.TipoEquipo.Nombre,
+                        CodigoAlquiler = asignacion.Activo.TipoEquipo.CodigoAlquiler,
                         PrecioPorDiaUsado = tramo.Precio,
                         DiasCobrados = dias,
                         Subtotal = subtotal,
@@ -196,6 +197,7 @@ public class ProformaService(AppDbContext db, TipoCambioService tipoCambioServic
             {
                 ActivoId = linea.ActivoId,
                 TipoEquipoNombre = linea.TipoEquipoNombre,
+                CodigoAlquiler = linea.CodigoAlquiler,
                 PrecioPorDiaUsado = linea.PrecioPorDiaUsado,
                 DiasCobrados = linea.DiasCobrados,
                 Subtotal = linea.Subtotal
