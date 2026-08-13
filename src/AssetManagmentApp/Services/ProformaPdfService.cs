@@ -31,7 +31,8 @@ public static class ProformaPdfService
             container.Page(page =>
             {
                 page.Size(PageSizes.Letter);
-                page.Margin(2, Unit.Centimetre);
+                page.MarginVertical(1.5f, Unit.Centimetre);
+                page.MarginHorizontal(1, Unit.Centimetre);
                 page.DefaultTextStyle(x => x.FontSize(9));
 
                 page.Header().Column(col =>
@@ -108,21 +109,29 @@ public static class ProformaPdfService
                     {
                         table.ColumnsDefinition(columns =>
                         {
-                            columns.RelativeColumn(4);
-                            columns.RelativeColumn(2);
-                            columns.RelativeColumn(2);
-                            columns.RelativeColumn(2);
-                            columns.RelativeColumn(2);
+                            columns.RelativeColumn(0.8f);  // Código
+                            columns.RelativeColumn(3f);    // Descripción
+                            columns.RelativeColumn(1.3f);  // Proyecto
+                            columns.RelativeColumn(1.3f);  // Modelo
+                            columns.RelativeColumn(1.3f);  // Obra
+                            columns.RelativeColumn(1.5f);  // Actividad
+                            columns.RelativeColumn(1f);    // Cantidad
+                            columns.RelativeColumn(1f);    // Días
+                            columns.RelativeColumn(1.3f);  // Precio/día
                         });
 
                         table.Header(header =>
                         {
-                            header.Cell().Text("Tipo de equipo").Bold();
-                            header.Cell().AlignRight().Text("Cantidad").Bold();
-                            header.Cell().AlignRight().Text("Días").Bold();
-                            header.Cell().AlignRight().Text("Precio/día").Bold();
-                            header.Cell().AlignRight().Text("Subtotal").Bold();
-                            header.Cell().ColumnSpan(5).PaddingTop(3).LineHorizontal(1);
+                            header.Cell().PaddingRight(2).AlignCenter().Text("Código").Bold();
+                            header.Cell().PaddingRight(4).Text("Descripción").Bold();
+                            header.Cell().PaddingRight(4).AlignCenter().Text("Proyecto").Bold();
+                            header.Cell().PaddingRight(4).AlignCenter().Text("Modelo").Bold();
+                            header.Cell().PaddingRight(4).AlignCenter().Text("Obra").Bold();
+                            header.Cell().PaddingRight(4).AlignCenter().Text("Actividad").Bold();
+                            header.Cell().PaddingRight(4).AlignCenter().Text("Cant.").Bold();
+                            header.Cell().PaddingRight(4).AlignCenter().Text("Días").Bold();
+                            header.Cell().AlignCenter().Text("Precio/día").Bold();
+                            header.Cell().ColumnSpan(9).PaddingTop(3).LineHorizontal(1);
                         });
 
                         // La placa es un dato interno del activo; al cliente se le muestra
@@ -140,13 +149,19 @@ public static class ProformaPdfService
                             })
                             .OrderBy(l => l.TipoEquipoNombre);
 
+                        var proyecto = proforma.Proyecto;
+
                         foreach (var linea in lineasAgrupadas)
                         {
-                            table.Cell().Text(DescripcionLinea(linea.TipoEquipoNombre, linea.CodigoAlquiler, proforma.Proyecto));
-                            table.Cell().AlignRight().Text(linea.Cantidad.ToString());
-                            table.Cell().AlignRight().Text(linea.DiasCobrados.ToString());
-                            table.Cell().AlignRight().Text(linea.PrecioPorDiaUsado.ToMoneda());
-                            table.Cell().AlignRight().Text(linea.Subtotal.ToMoneda());
+                            table.Cell().PaddingRight(2).PaddingTop(2).AlignCenter().Text(linea.CodigoAlquiler ?? "-");
+                            table.Cell().PaddingRight(4).PaddingTop(2).Text(linea.TipoEquipoNombre);
+                            table.Cell().PaddingRight(4).PaddingTop(2).AlignCenter().Text(proyecto.CodigoProyecto?.ToString() ?? "-");
+                            table.Cell().PaddingRight(4).PaddingTop(2).AlignCenter().Text(proyecto.Modelo?.ToString() ?? "-");
+                            table.Cell().PaddingRight(4).PaddingTop(2).AlignCenter().Text(proyecto.Obra?.ToString() ?? "-");
+                            table.Cell().PaddingRight(4).PaddingTop(2).AlignCenter().Text(proyecto.Actividad?.ToString() ?? "-");
+                            table.Cell().PaddingRight(4).PaddingTop(2).AlignCenter().Text(linea.Cantidad.ToString());
+                            table.Cell().PaddingRight(4).PaddingTop(2).AlignCenter().Text(linea.DiasCobrados.ToString());
+                            table.Cell().PaddingTop(2).AlignCenter().Text(linea.PrecioPorDiaUsado.ToMoneda());
                         }
                     });
 
