@@ -92,7 +92,7 @@ else
 
     private async Task CargarAsync()
     {
-        proyectos = await Db.Proyectos.AsNoTracking().OrderBy(p => p.Nombre).ToListAsync();
+        proyectos = await Db.Proyectos.AsNoTracking().Where(p => !p.EsBodega).OrderBy(p => p.Nombre).ToListAsync();
     }
 
     private void IniciarEdicion(Proyecto proyecto)
