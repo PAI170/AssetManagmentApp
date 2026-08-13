@@ -341,9 +341,6 @@ namespace AssetManagmentApp.Data.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<bool>("EsBodega")
-                        .HasColumnType("tinyint(1)");
-
                     b.Property<string>("Estado")
                         .IsRequired()
                         .HasColumnType("longtext");

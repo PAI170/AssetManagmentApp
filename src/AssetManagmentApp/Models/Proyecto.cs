@@ -8,9 +8,6 @@ public class Proyecto
     public string IngenieroACargo { get; set; } = string.Empty;
     public DateOnly FechaCreacion { get; set; }
     public EstadoProyecto Estado { get; set; } = EstadoProyecto.Activo;
-    // Proyecto especial que representa la bodega física: no es un cliente, no factura,
-    // y es el destino por defecto cuando se retorna un equipo (ver ConfirmarRetornarAsync).
-    public bool EsBodega { get; set; }
 
     public ICollection<Activo> ActivosAsignados { get; set; } = new List<Activo>();
     public ICollection<Movimiento> Movimientos { get; set; } = new List<Movimiento>();
