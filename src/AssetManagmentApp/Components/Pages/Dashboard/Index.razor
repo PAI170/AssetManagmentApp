@@ -175,7 +175,7 @@ else
             .Select(estado => conteos.FirstOrDefault(c => c.Estado == estado) ?? new InventarioPorEstado(estado, 0))
             .ToList();
 
-        var proyectos = await Db.Proyectos.AsNoTracking().Where(p => !p.EsBodega).ToListAsync();
+        var proyectos = await Db.Proyectos.AsNoTracking().ToListAsync();
         totalProyectos = proyectos.Count;
         proyectosActivos = proyectos.Count(p => p.Estado == EstadoProyecto.Activo);
         proyectosCerrados = proyectos.Count(p => p.Estado == EstadoProyecto.Cerrado);

@@ -114,30 +114,16 @@
         }
 
         var fechaRegistro = DateOnly.FromDateTime(DateTime.Now);
-        var bodega = await Db.Proyectos.AsNoTracking().FirstOrDefaultAsync(p => p.EsBodega);
-
         foreach (var placa in placas)
         {
-            var activo = new Activo
+            Db.Activos.Add(new Activo
             {
                 Placa = placa,
                 TipoEquipoId = nuevoActivo.TipoEquipoId,
                 Estado = EstadoActivo.Disponible,
-                ProyectoActualId = bodega?.Id,
+                ProyectoActualId = null,
                 FechaRegistro = fechaRegistro
-            };
-            Db.Activos.Add(activo);
-
-            if (bodega is not null)
-            {
-                Db.AsignacionesActivoProyecto.Add(new AsignacionActivoProyecto
-                {
-                    Activo = activo,
-                    ProyectoId = bodega.Id,
-                    FechaIngreso = fechaRegistro,
-                    FechaUltimoCobro = fechaRegistro
-                });
-            }
+            });
         }
 
         try
