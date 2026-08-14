@@ -110,10 +110,9 @@ public static class ProformaPdfService
                         table.ColumnsDefinition(columns =>
                         {
                             columns.RelativeColumn(1f);    // Código
-                            columns.RelativeColumn(4.5f);  // Descripción
+                            columns.RelativeColumn(5f);    // Descripción
                             columns.RelativeColumn(1.3f);  // Cantidad
                             columns.RelativeColumn(1.3f);  // Días
-                            columns.RelativeColumn(1.6f);  // Precio/día
                             columns.RelativeColumn(1.6f);  // Subtotal
                         });
 
@@ -123,9 +122,8 @@ public static class ProformaPdfService
                             header.Cell().PaddingRight(4).Text("Descripción").Bold();
                             header.Cell().PaddingRight(4).AlignCenter().Text("Cantidad").Bold();
                             header.Cell().PaddingRight(4).AlignCenter().Text("Días").Bold();
-                            header.Cell().PaddingRight(4).AlignCenter().Text("Precio/día").Bold();
                             header.Cell().AlignCenter().Text("Subtotal").Bold();
-                            header.Cell().ColumnSpan(6).PaddingTop(3).LineHorizontal(1);
+                            header.Cell().ColumnSpan(5).PaddingTop(3).LineHorizontal(1);
                         });
 
                         // La placa es un dato interno del activo; al cliente se le muestra
@@ -149,7 +147,6 @@ public static class ProformaPdfService
                             table.Cell().PaddingRight(4).PaddingTop(2).Text(DescripcionLinea(linea.TipoEquipoNombre, proforma.Proyecto));
                             table.Cell().PaddingRight(4).PaddingTop(2).AlignCenter().Text(linea.Cantidad.ToString());
                             table.Cell().PaddingRight(4).PaddingTop(2).AlignCenter().Text(linea.DiasCobrados.ToString());
-                            table.Cell().PaddingRight(4).PaddingTop(2).AlignCenter().Text(linea.PrecioPorDiaUsado.ToMoneda());
                             table.Cell().PaddingTop(2).AlignCenter().Text(linea.Subtotal.ToMoneda());
                         }
                     });
