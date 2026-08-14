@@ -85,6 +85,28 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
+
+// Las llaves de Data Protection son efímeras (ver arriba): al reiniciar el proceso, los
+// tokens antiforgery de cookies/paginas ya emitidos quedan invalidos. Sin esto, esa
+// excepcion no tiene manejador y el usuario ve una pantalla en blanco en vez de volver
+// al login.
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next(context);
+    }
+    catch (Microsoft.AspNetCore.Antiforgery.AntiforgeryValidationException)
+    {
+        foreach (var key in context.Request.Cookies.Keys)
+        {
+            context.Response.Cookies.Delete(key);
+        }
+
+        context.Response.Redirect("/login");
+    }
+});
+
 app.UseAntiforgery();
 
 app.UseAuthentication();
