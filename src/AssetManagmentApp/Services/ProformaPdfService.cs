@@ -109,29 +109,23 @@ public static class ProformaPdfService
                     {
                         table.ColumnsDefinition(columns =>
                         {
-                            columns.RelativeColumn(0.8f);  // Código
-                            columns.RelativeColumn(3f);    // Descripción
-                            columns.RelativeColumn(1.3f);  // Proyecto
-                            columns.RelativeColumn(1.3f);  // Modelo
-                            columns.RelativeColumn(1.3f);  // Obra
-                            columns.RelativeColumn(1.5f);  // Actividad
-                            columns.RelativeColumn(1f);    // Cantidad
-                            columns.RelativeColumn(1f);    // Días
-                            columns.RelativeColumn(1.3f);  // Precio/día
+                            columns.RelativeColumn(1f);    // Código
+                            columns.RelativeColumn(4.5f);  // Descripción
+                            columns.RelativeColumn(1.3f);  // Cantidad
+                            columns.RelativeColumn(1.3f);  // Días
+                            columns.RelativeColumn(1.6f);  // Precio/día
+                            columns.RelativeColumn(1.6f);  // Subtotal
                         });
 
                         table.Header(header =>
                         {
-                            header.Cell().PaddingRight(2).AlignCenter().Text("Código").Bold();
+                            header.Cell().PaddingRight(4).AlignCenter().Text("Código").Bold();
                             header.Cell().PaddingRight(4).Text("Descripción").Bold();
-                            header.Cell().PaddingRight(4).AlignCenter().Text("Proyecto").Bold();
-                            header.Cell().PaddingRight(4).AlignCenter().Text("Modelo").Bold();
-                            header.Cell().PaddingRight(4).AlignCenter().Text("Obra").Bold();
-                            header.Cell().PaddingRight(4).AlignCenter().Text("Actividad").Bold();
-                            header.Cell().PaddingRight(4).AlignCenter().Text("Cant.").Bold();
+                            header.Cell().PaddingRight(4).AlignCenter().Text("Cantidad").Bold();
                             header.Cell().PaddingRight(4).AlignCenter().Text("Días").Bold();
-                            header.Cell().AlignCenter().Text("Precio/día").Bold();
-                            header.Cell().ColumnSpan(9).PaddingTop(3).LineHorizontal(1);
+                            header.Cell().PaddingRight(4).AlignCenter().Text("Precio/día").Bold();
+                            header.Cell().AlignCenter().Text("Subtotal").Bold();
+                            header.Cell().ColumnSpan(6).PaddingTop(3).LineHorizontal(1);
                         });
 
                         // La placa es un dato interno del activo; al cliente se le muestra
@@ -149,23 +143,18 @@ public static class ProformaPdfService
                             })
                             .OrderBy(l => l.TipoEquipoNombre);
 
-                        var proyecto = proforma.Proyecto;
-
                         foreach (var linea in lineasAgrupadas)
                         {
-                            table.Cell().PaddingRight(2).PaddingTop(2).AlignCenter().Text(linea.CodigoAlquiler ?? "-");
-                            table.Cell().PaddingRight(4).PaddingTop(2).Text(linea.TipoEquipoNombre);
-                            table.Cell().PaddingRight(4).PaddingTop(2).AlignCenter().Text(proyecto.CodigoProyecto?.ToString() ?? "-");
-                            table.Cell().PaddingRight(4).PaddingTop(2).AlignCenter().Text(proyecto.Modelo?.ToString() ?? "-");
-                            table.Cell().PaddingRight(4).PaddingTop(2).AlignCenter().Text(proyecto.Obra?.ToString() ?? "-");
-                            table.Cell().PaddingRight(4).PaddingTop(2).AlignCenter().Text(proyecto.Actividad?.ToString() ?? "-");
+                            table.Cell().PaddingRight(4).PaddingTop(2).AlignCenter().Text(linea.CodigoAlquiler ?? "-");
+                            table.Cell().PaddingRight(4).PaddingTop(2).Text(DescripcionLinea(linea.TipoEquipoNombre, proforma.Proyecto));
                             table.Cell().PaddingRight(4).PaddingTop(2).AlignCenter().Text(linea.Cantidad.ToString());
                             table.Cell().PaddingRight(4).PaddingTop(2).AlignCenter().Text(linea.DiasCobrados.ToString());
-                            table.Cell().PaddingTop(2).AlignCenter().Text(linea.PrecioPorDiaUsado.ToMoneda());
+                            table.Cell().PaddingRight(4).PaddingTop(2).AlignCenter().Text(linea.PrecioPorDiaUsado.ToMoneda());
+                            table.Cell().PaddingTop(2).AlignCenter().Text(linea.Subtotal.ToMoneda());
                         }
                     });
 
-                    col.Item().PaddingTop(6).Row(row =>
+                    col.Item().PaddingTop(60).Row(row =>
                     {
                         row.RelativeItem(3).Column(c =>
                         {
@@ -173,9 +162,9 @@ public static class ProformaPdfService
                             c.Item().PaddingTop(2).Border(1).MinHeight(60);
                         });
 
-                        row.ConstantItem(20);
+                        row.ConstantItem(50);
 
-                        row.RelativeItem(2).Column(c =>
+                        row.RelativeItem(2).PaddingTop(25).Column(c =>
                         {
                             c.Item().Row(r =>
                             {
@@ -207,16 +196,15 @@ public static class ProformaPdfService
         return documento.GeneratePdf();
     }
 
-    // "1662 Batidoras (159, 2, 426, 5)": el código de alquiler (si el tipo de equipo
-    // tiene uno) va de prefijo, y los códigos de requisa del proyecto (si están
-    // cargados) van entre paréntesis al final.
-    private static string DescripcionLinea(string tipoEquipoNombre, string? codigoAlquiler, Proyecto proyecto)
+    // "Batidoras (159, 2, 426, 5)": el código de alquiler va en su propia columna;
+    // acá solo se agregan los códigos de requisa del proyecto (si están cargados)
+    // entre paréntesis al final del nombre.
+    private static string DescripcionLinea(string tipoEquipoNombre, Proyecto proyecto)
     {
-        var prefijo = string.IsNullOrWhiteSpace(codigoAlquiler) ? "" : $"{codigoAlquiler} ";
         var sufijo = proyecto.CodigoProyecto is null
             ? ""
             : $" ({proyecto.CodigoProyecto}, {proyecto.Modelo}, {proyecto.Obra}, {proyecto.Actividad})";
 
-        return $"{prefijo}{tipoEquipoNombre}{sufijo}";
+        return $"{tipoEquipoNombre}{sufijo}";
     }
 }
