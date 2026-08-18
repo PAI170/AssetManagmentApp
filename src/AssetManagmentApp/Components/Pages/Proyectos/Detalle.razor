@@ -149,8 +149,8 @@ else
                         <thead>
                             <tr>
                                 <th><input type="checkbox" checked="@TodoSeleccionado" @onchange="@((ChangeEventArgs e) => ToggleSeleccionTodo((bool)e.Value!))" /></th>
-                                <th>Placa</th>
                                 <th>Tipo</th>
+                                <th>Cantidad</th>
                                 <th>Desde</th>
                                 <th>Hasta</th>
                                 <th>Días</th>
@@ -158,16 +158,16 @@ else
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var linea in VistaPreviaPorAsignacion)
+                            @foreach (var grupo in VistaPreviaAgrupada)
                             {
                                 <tr>
-                                    <td><input type="checkbox" checked="@asignacionesSeleccionadas.Contains(linea.AsignacionId)" @onchange="@((ChangeEventArgs e) => ToggleSeleccionLinea(linea.AsignacionId, (bool)e.Value!))" /></td>
-                                    <td>@linea.Placa</td>
-                                    <td>@linea.TipoEquipoNombre</td>
-                                    <td>@linea.PeriodoDesde.ToString("dd/MM/yyyy")</td>
-                                    <td>@linea.PeriodoHastaExclusive.AddDays(-1).ToString("dd/MM/yyyy")</td>
-                                    <td>@linea.DiasCobrados</td>
-                                    <td>@linea.Subtotal.ToMoneda()</td>
+                                    <td><input type="checkbox" checked="@GrupoSeleccionado(grupo)" @onchange="@((ChangeEventArgs e) => ToggleSeleccionGrupo(grupo, (bool)e.Value!))" /></td>
+                                    <td>@grupo.TipoEquipoNombre</td>
+                                    <td>@grupo.Cantidad</td>
+                                    <td>@grupo.PeriodoDesde.ToString("dd/MM/yyyy")</td>
+                                    <td>@grupo.PeriodoHastaExclusive.AddDays(-1).ToString("dd/MM/yyyy")</td>
+                                    <td>@grupo.DiasCobrados</td>
+                                    <td>@grupo.Subtotal.ToMoneda()</td>
                                 </tr>
                             }
                         </tbody>
@@ -252,31 +252,33 @@ else
     private HashSet<int> asignacionesSeleccionadas = [];
     private string? generarError;
 
-    // Para permitir cobro individual se agrupa por asignación (equipo asignado), no por
-    // tipo: es la unidad que se puede seleccionar/deseleccionar, ya que FechaUltimoCobro
-    // se mueve por asignación completa (todos sus tramos de precio juntos).
-    private IEnumerable<LineaPorAsignacion> VistaPreviaPorAsignacion =>
+    // La placa es un dato interno del activo; para seleccionar alcanza con agrupar por
+    // tipo + período + precio (mostrando cantidad), igual que antes. La selección real se
+    // guarda por asignación (AsignacionId): marcar/desmarcar un grupo marca/desmarca todas
+    // las asignaciones que lo componen, ya que FechaUltimoCobro se mueve por asignación
+    // completa (todos sus tramos de precio juntos).
+    private IEnumerable<LineaAgrupada> VistaPreviaAgrupada =>
         (vistaPrevia ?? [])
-            .GroupBy(l => l.AsignacionId)
-            .Select(g => new LineaPorAsignacion(
-                g.Key,
-                g.First().Placa,
-                g.First().TipoEquipoNombre,
-                g.Min(l => l.PeriodoDesde),
-                g.Max(l => l.PeriodoHastaExclusive),
-                g.Sum(l => l.DiasCobrados),
-                g.Sum(l => l.Subtotal)))
+            .GroupBy(l => (l.TipoEquipoNombre, l.PeriodoDesde, l.PeriodoHastaExclusive, l.PrecioPorDiaUsado))
+            .Select(g => new LineaAgrupada(
+                g.Key.TipoEquipoNombre,
+                g.Select(l => l.AsignacionId).Distinct().Count(),
+                g.Key.PeriodoDesde,
+                g.Key.PeriodoHastaExclusive,
+                g.First().DiasCobrados,
+                g.Sum(l => l.Subtotal),
+                g.Select(l => l.AsignacionId).Distinct().ToList()))
             .OrderBy(l => l.TipoEquipoNombre)
-            .ThenBy(l => l.Placa);
+            .ThenBy(l => l.PeriodoDesde);
 
-    private record LineaPorAsignacion(
-        int AsignacionId,
-        string Placa,
+    private record LineaAgrupada(
         string TipoEquipoNombre,
+        int Cantidad,
         DateOnly PeriodoDesde,
         DateOnly PeriodoHastaExclusive,
         int DiasCobrados,
-        decimal Subtotal);
+        decimal Subtotal,
+        List<int> AsignacionIds);
 
     private decimal TotalSeleccionado =>
         (vistaPrevia ?? [])
@@ -287,6 +289,9 @@ else
         vistaPrevia is { Count: > 0 }
         && vistaPrevia.Select(l => l.AsignacionId).Distinct().All(asignacionesSeleccionadas.Contains);
 
+    private bool GrupoSeleccionado(LineaAgrupada grupo) =>
+        grupo.AsignacionIds.All(asignacionesSeleccionadas.Contains);
+
     private void ToggleSeleccionTodo(bool marcado)
     {
         asignacionesSeleccionadas = marcado
@@ -294,15 +299,21 @@ else
             : [];
     }
 
-    private void ToggleSeleccionLinea(int asignacionId, bool marcado)
+    private void ToggleSeleccionGrupo(LineaAgrupada grupo, bool marcado)
     {
         if (marcado)
         {
-            asignacionesSeleccionadas.Add(asignacionId);
+            foreach (var id in grupo.AsignacionIds)
+            {
+                asignacionesSeleccionadas.Add(id);
+            }
         }
         else
         {
-            asignacionesSeleccionadas.Remove(asignacionId);
+            foreach (var id in grupo.AsignacionIds)
+            {
+                asignacionesSeleccionadas.Remove(id);
+            }
         }
     }
 
