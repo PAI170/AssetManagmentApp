@@ -227,10 +227,31 @@ public class ProformaService(AppDbContext db, TipoCambioService tipoCambioServic
 
     public async Task AnularAsync(int proformaId)
     {
-        var proforma = await db.Proformas.FirstOrDefaultAsync(p => p.Id == proformaId)
+        var proforma = await db.Proformas.Include(p => p.Detalles).FirstOrDefaultAsync(p => p.Id == proformaId)
             ?? throw new InvalidOperationException("La proforma no existe.");
 
         proforma.Estado = EstadoProforma.Anulada;
+
+        // Devuelve los días facturados por esta proforma: si el activo no tiene NINGUNA
+        // otra proforma (ni generada ni anulada), es seguro asumir que su FechaUltimoCobro
+        // venía de FechaIngreso (invariante "sin facturar"), así que se revierte ahí. Si
+        // hay otra proforma de por medio no se toca, para no perder días de otro corte.
+        var activoIds = proforma.Detalles.Select(d => d.ActivoId).Distinct().ToList();
+        var asignaciones = await db.AsignacionesActivoProyecto
+            .Where(a => a.ProyectoId == proforma.ProyectoId && activoIds.Contains(a.ActivoId))
+            .ToListAsync();
+
+        foreach (var asignacion in asignaciones)
+        {
+            var tieneOtraProforma = await db.ProformaDetalles
+                .AnyAsync(d => d.ActivoId == asignacion.ActivoId && d.ProformaId != proformaId);
+
+            if (!tieneOtraProforma)
+            {
+                asignacion.FechaUltimoCobro = asignacion.FechaIngreso;
+            }
+        }
+
         await db.SaveChangesAsync();
         db.ChangeTracker.Clear();
     }
