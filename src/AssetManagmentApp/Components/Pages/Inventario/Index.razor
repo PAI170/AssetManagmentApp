@@ -110,6 +110,10 @@
                         </select>
                     </div>
                     <div>
+                        <label class="form-label mb-0">Fecha</label>
+                        <input type="date" class="form-control form-control-sm" @bind="bulkFechaEstado" max="@fechaMaxima" />
+                    </div>
+                    <div>
                         <label class="form-label mb-0">Observación</label>
                         <input class="form-control form-control-sm" @bind="bulkObservacion" />
                     </div>
@@ -233,10 +237,11 @@ else
                                                     <option value="@estado">@estado.Etiqueta()</option>
                                                 }
                                             </select>
+                                            <input type="date" class="form-control form-control-sm" @bind="accionFechaTraslado" max="@fechaMaxima" />
                                             <input class="form-control form-control-sm" placeholder="Observación" @bind="accionObservacion" />
                                         </div>
                                         <div class="small border rounded px-2 py-1">
-                                            ¿Cambiar estado de "@activo.Placa" a "@accionNuevoEstado.Etiqueta()"?
+                                            ¿Cambiar estado de "@activo.Placa" a "@accionNuevoEstado.Etiqueta()" el @accionFechaTraslado.ToString("dd/MM/yyyy")?
                                         </div>
                                         <div class="d-flex gap-1">
                                             <button class="btn btn-sm btn-success" disabled="@procesando" @onclick="() => ConfirmarCambiarEstadoAsync(activo)">Confirmar</button>
@@ -349,6 +354,7 @@ else
     private int bulkProyectoId;
     private DateOnly bulkFecha = DateOnly.FromDateTime(DateTime.Now);
     private EstadoActivo bulkNuevoEstado;
+    private DateOnly bulkFechaEstado = DateOnly.FromDateTime(DateTime.Now);
     private string bulkObservacion = "";
     private DateOnly bulkFechaCorreccion = DateOnly.FromDateTime(DateTime.Now);
     private string bulkMotivoCorreccion = "";
@@ -498,6 +504,7 @@ else
         filaAccionId = activo.Id;
         filaAccionTipo = "estado";
         accionNuevoEstado = activo.Estado;
+        accionFechaTraslado = DateOnly.FromDateTime(DateTime.Now);
         accionObservacion = "";
         errorMessage = null;
     }
@@ -702,12 +709,20 @@ else
                 return;
             }
 
+            var hoy = DateOnly.FromDateTime(DateTime.Now);
+            if (bulkFechaEstado > hoy)
+            {
+                errorMessage = "La fecha no puede ser futura.";
+                return;
+            }
+
             var activosDb = await Db.Activos
                 .Where(a => idsSeleccionados.Contains(a.Id) && a.Estado != bulkNuevoEstado)
                 .ToListAsync();
 
             var usuarioId = await CurrentUser.ObtenerUsuarioActualIdAsync();
             var observacion = string.IsNullOrWhiteSpace(bulkObservacion) ? null : bulkObservacion.Trim();
+            var fechaMovimiento = bulkFechaEstado.ToDateTime(TimeOnly.FromDateTime(DateTime.Now));
 
             foreach (var activo in activosDb)
             {
@@ -718,7 +733,7 @@ else
                     TipoMovimiento = TipoMovimiento.CambioDeEstado,
                     EstadoAnterior = activo.Estado,
                     EstadoNuevo = bulkNuevoEstado,
-                    FechaMovimiento = DateTime.Now,
+                    FechaMovimiento = fechaMovimiento,
                     UsuarioId = usuarioId,
                     Observacion = observacion
                 });
@@ -731,6 +746,7 @@ else
             var omitidos = idsSeleccionados.Count - activosDb.Count;
             seleccionados.Clear();
             bulkObservacion = "";
+            bulkFechaEstado = DateOnly.FromDateTime(DateTime.Now);
             await CargarActivosAsync();
 
             if (omitidos > 0)
@@ -970,6 +986,13 @@ else
                 return;
             }
 
+            var hoy = DateOnly.FromDateTime(DateTime.Now);
+            if (accionFechaTraslado > hoy)
+            {
+                errorMessage = "La fecha no puede ser futura.";
+                return;
+            }
+
             var usuarioId = await CurrentUser.ObtenerUsuarioActualIdAsync();
             var estadoAnterior = activo.Estado;
 
@@ -980,7 +1003,7 @@ else
                 TipoMovimiento = TipoMovimiento.CambioDeEstado,
                 EstadoAnterior = estadoAnterior,
                 EstadoNuevo = accionNuevoEstado,
-                FechaMovimiento = DateTime.Now,
+                FechaMovimiento = accionFechaTraslado.ToDateTime(TimeOnly.FromDateTime(DateTime.Now)),
                 UsuarioId = usuarioId,
                 Observacion = string.IsNullOrWhiteSpace(accionObservacion) ? null : accionObservacion.Trim()
             });
