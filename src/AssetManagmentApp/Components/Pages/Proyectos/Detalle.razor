@@ -143,42 +143,43 @@ else
                 }
                 else
                 {
+                    <p class="text-muted small">Selecciona qué equipo cobrar en esta proforma. Lo que no marques queda pendiente de facturar.</p>
                     <div class="table-responsive">
                     <table class="table table-sm table-striped">
                         <thead>
                             <tr>
+                                <th><input type="checkbox" checked="@TodoSeleccionado" @onchange="@((ChangeEventArgs e) => ToggleSeleccionTodo((bool)e.Value!))" /></th>
+                                <th>Placa</th>
                                 <th>Tipo</th>
-                                <th>Cantidad</th>
                                 <th>Desde</th>
                                 <th>Hasta</th>
                                 <th>Días</th>
-                                <th>Precio/día</th>
                                 <th>Subtotal</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var linea in VistaPreviaAgrupada)
+                            @foreach (var linea in VistaPreviaPorAsignacion)
                             {
                                 <tr>
+                                    <td><input type="checkbox" checked="@asignacionesSeleccionadas.Contains(linea.AsignacionId)" @onchange="@((ChangeEventArgs e) => ToggleSeleccionLinea(linea.AsignacionId, (bool)e.Value!))" /></td>
+                                    <td>@linea.Placa</td>
                                     <td>@linea.TipoEquipoNombre</td>
-                                    <td>@linea.Cantidad</td>
                                     <td>@linea.PeriodoDesde.ToString("dd/MM/yyyy")</td>
                                     <td>@linea.PeriodoHastaExclusive.AddDays(-1).ToString("dd/MM/yyyy")</td>
                                     <td>@linea.DiasCobrados</td>
-                                    <td>@linea.PrecioPorDiaUsado.ToMoneda()</td>
                                     <td>@linea.Subtotal.ToMoneda()</td>
                                 </tr>
                             }
                         </tbody>
                         <tfoot>
                             <tr>
-                                <th colspan="6" class="text-end">Total</th>
-                                <th>@vistaPrevia.Sum(l => l.Subtotal).ToMoneda()</th>
+                                <th colspan="6" class="text-end">Total seleccionado</th>
+                                <th>@TotalSeleccionado.ToMoneda()</th>
                             </tr>
                         </tfoot>
                     </table>
                     </div>
-                    <button class="btn btn-success" @onclick="ConfirmarGenerarAsync">Confirmar y generar proforma</button>
+                    <button class="btn btn-success" disabled="@(asignacionesSeleccionadas.Count == 0)" @onclick="ConfirmarGenerarAsync">Confirmar y generar proforma</button>
                 }
             }
         </div>
@@ -248,32 +249,62 @@ else
     private bool mostrandoGenerar;
     private DateOnly fechaCorte;
     private List<ProformaLineaPreview>? vistaPrevia;
+    private HashSet<int> asignacionesSeleccionadas = [];
     private string? generarError;
 
-    // La placa es un dato interno del activo; para el cliente alcanza con el tipo de
-    // equipo y la cantidad, así que se agrupan las líneas por tipo + período + precio.
-    private IEnumerable<LineaAgrupada> VistaPreviaAgrupada =>
+    // Para permitir cobro individual se agrupa por asignación (equipo asignado), no por
+    // tipo: es la unidad que se puede seleccionar/deseleccionar, ya que FechaUltimoCobro
+    // se mueve por asignación completa (todos sus tramos de precio juntos).
+    private IEnumerable<LineaPorAsignacion> VistaPreviaPorAsignacion =>
         (vistaPrevia ?? [])
-            .GroupBy(l => (l.TipoEquipoNombre, l.PeriodoDesde, l.PeriodoHastaExclusive, l.PrecioPorDiaUsado))
-            .Select(g => new LineaAgrupada(
-                g.Key.TipoEquipoNombre,
-                g.Count(),
-                g.Key.PeriodoDesde,
-                g.Key.PeriodoHastaExclusive,
-                g.First().DiasCobrados,
-                g.Key.PrecioPorDiaUsado,
+            .GroupBy(l => l.AsignacionId)
+            .Select(g => new LineaPorAsignacion(
+                g.Key,
+                g.First().Placa,
+                g.First().TipoEquipoNombre,
+                g.Min(l => l.PeriodoDesde),
+                g.Max(l => l.PeriodoHastaExclusive),
+                g.Sum(l => l.DiasCobrados),
                 g.Sum(l => l.Subtotal)))
             .OrderBy(l => l.TipoEquipoNombre)
-            .ThenBy(l => l.PeriodoDesde);
+            .ThenBy(l => l.Placa);
 
-    private record LineaAgrupada(
+    private record LineaPorAsignacion(
+        int AsignacionId,
+        string Placa,
         string TipoEquipoNombre,
-        int Cantidad,
         DateOnly PeriodoDesde,
         DateOnly PeriodoHastaExclusive,
         int DiasCobrados,
-        decimal PrecioPorDiaUsado,
         decimal Subtotal);
+
+    private decimal TotalSeleccionado =>
+        (vistaPrevia ?? [])
+            .Where(l => asignacionesSeleccionadas.Contains(l.AsignacionId))
+            .Sum(l => l.Subtotal);
+
+    private bool TodoSeleccionado =>
+        vistaPrevia is { Count: > 0 }
+        && vistaPrevia.Select(l => l.AsignacionId).Distinct().All(asignacionesSeleccionadas.Contains);
+
+    private void ToggleSeleccionTodo(bool marcado)
+    {
+        asignacionesSeleccionadas = marcado
+            ? (vistaPrevia ?? []).Select(l => l.AsignacionId).ToHashSet()
+            : [];
+    }
+
+    private void ToggleSeleccionLinea(int asignacionId, bool marcado)
+    {
+        if (marcado)
+        {
+            asignacionesSeleccionadas.Add(asignacionId);
+        }
+        else
+        {
+            asignacionesSeleccionadas.Remove(asignacionId);
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -324,6 +355,7 @@ else
         var corte24 = new DateOnly(hoy.Year, hoy.Month, 24);
         fechaCorte = hoy.Day <= 24 ? corte24 : corte24.AddMonths(1);
         vistaPrevia = null;
+        asignacionesSeleccionadas = [];
         generarError = null;
         mostrandoGenerar = true;
     }
@@ -332,6 +364,7 @@ else
     {
         mostrandoGenerar = false;
         vistaPrevia = null;
+        asignacionesSeleccionadas = [];
         generarError = null;
     }
 
@@ -339,6 +372,7 @@ else
     {
         generarError = null;
         vistaPrevia = await ProformaService.CalcularDetalleAsync(Id, fechaCorte);
+        asignacionesSeleccionadas = vistaPrevia.Select(l => l.AsignacionId).ToHashSet();
     }
 
     private async Task ConfirmarGenerarAsync()
@@ -349,7 +383,7 @@ else
 
         try
         {
-            await ProformaService.GenerarAsync(Id, fechaCorte, usuarioId);
+            await ProformaService.GenerarAsync(Id, fechaCorte, usuarioId, asignacionesSeleccionadas);
         }
         catch (InvalidOperationException ex)
         {

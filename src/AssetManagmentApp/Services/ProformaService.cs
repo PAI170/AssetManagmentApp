@@ -166,9 +166,16 @@ public class ProformaService(AppDbContext db, TipoCambioService tipoCambioServic
             .ToList();
     }
 
-    public async Task<Proforma> GenerarAsync(int proyectoId, DateOnly fechaCorte, int usuarioId)
+    // asignacionIdsSeleccionadas permite cobrar solo un subconjunto de lo pendiente (cobro
+    // individual): si se indica, se filtran las líneas a esas asignaciones y el resto queda
+    // pendiente de facturar (su FechaUltimoCobro no se toca). Si es null, se cobra todo.
+    public async Task<Proforma> GenerarAsync(int proyectoId, DateOnly fechaCorte, int usuarioId, IReadOnlySet<int>? asignacionIdsSeleccionadas = null)
     {
         var lineas = await CalcularDetalleAsync(proyectoId, fechaCorte);
+        if (asignacionIdsSeleccionadas is not null)
+        {
+            lineas = lineas.Where(l => asignacionIdsSeleccionadas.Contains(l.AsignacionId)).ToList();
+        }
         if (lineas.Count == 0)
         {
             throw new InvalidOperationException("No hay días pendientes de facturar para este proyecto.");
