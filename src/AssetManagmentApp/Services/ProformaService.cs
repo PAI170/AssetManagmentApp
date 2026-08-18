@@ -299,11 +299,15 @@ public class ProformaService(AppDbContext db, TipoCambioService tipoCambioServic
         }
     }
 
+    // Cualquier movimiento (no solo CambioDeEstado) puede marcar la entrada o salida de
+    // Dañado: p. ej. "Retornar a bodega" también pone EstadoNuevo=Disponible si el activo
+    // estaba Dañado. Filtrar solo por CambioDeEstado dejaba esas salidas sin detectar.
     private async Task<Dictionary<int, List<Movimiento>>> ObtenerCambiosEstadoPorActivoAsync(List<int> activoIds)
     {
         var movimientos = await db.Movimientos
             .AsNoTracking()
-            .Where(m => activoIds.Contains(m.ActivoId) && m.TipoMovimiento == TipoMovimiento.CambioDeEstado)
+            .Where(m => activoIds.Contains(m.ActivoId)
+                && (m.EstadoAnterior == EstadoActivo.Danado || m.EstadoNuevo == EstadoActivo.Danado))
             .ToListAsync();
 
         return movimientos
